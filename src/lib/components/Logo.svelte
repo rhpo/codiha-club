@@ -1,0 +1,67 @@
+<script lang="ts">
+  export let animated = false;
+</script>
+
+<svg
+  id="Layer_1"
+  data-name="Layer 1"
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 320 312.83"
+  class:animated
+>
+  <path
+    d="M320,160c0,46.49-19.84,88.36-51.51,117.6-6.24,5.76-12.95,11.04-20.05,15.76,23.21-22.86,37.61-54.65,37.61-89.81,0-69.61-56.43-126.04-126.04-126.04s-126.04,56.43-126.04,126.04c0,35.15,14.39,66.94,37.61,89.81-7.1-4.72-13.81-9.99-20.05-15.76C19.84,248.37,0,206.5,0,160,0,71.64,71.64,0,160,0s160,71.64,160,160Z"
+  />
+  <path
+    d="M271.69,205.67c0,36.46-17.47,68.84-44.5,89.23,13.79-15.72,22.15-36.32,22.15-58.88,0-49.34-40-89.34-89.34-89.34s-89.34,40-89.34,89.34c0,22.56,8.36,43.16,22.15,58.88-27.03-20.38-44.5-52.77-44.5-89.23,0-61.69,50.01-111.69,111.69-111.69s111.69,50,111.69,111.69Z"
+  />
+  <path
+    d="M235.29,237.53c0,19.01-7.04,36.37-18.67,49.62-13.8,15.74-34.05,25.67-56.63,25.67s-42.83-9.93-56.63-25.67c-11.63-13.25-18.67-30.61-18.67-49.62,0-41.58,33.71-75.29,75.29-75.29s75.29,33.71,75.29,75.29Z"
+  />
+</svg>
+
+<style>
+  path {
+    fill: var(--primary-color);
+
+    transition: fill var(--transition-duration) var(--transition-easing);
+  }
+
+  :global(html.dark) path {
+    fill: white;
+  }
+
+  svg.animated path {
+    animation: logo-animation 2s ease-in-out infinite;
+  }
+
+  svg.animated path:nth-child(3) {
+    animation-delay: 0s;
+  }
+  svg.animated path:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+  svg.animated path:nth-child(1) {
+    animation-delay: 0.2s;
+  }
+
+  @keyframes logo-animation {
+    /* animate paths [0, 1, 2] opacity with slight delay between them */
+    0% {
+      opacity: 0;
+    }
+    33% {
+      opacity: 1;
+    }
+    66% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+</style>

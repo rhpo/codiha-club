@@ -1,0 +1,12 @@
+{
+	"/": [
+		"src/routes/+page.js"
+	],
+	"/articles/[slug]": [
+		"src/routes/articles/[slug]/+page.server.js"
+	],
+	"/club": [
+		"src/routes/club/+page.js"
+	],
+	"/register": []
+}
