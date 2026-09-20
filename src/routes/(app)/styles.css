@@ -23,6 +23,11 @@ html {
   --color-bg-2: hsl(224, 44%, 95%);
   --color-theme-1: orange;
   --color-theme-2: #4075a6;
+
+  --branding-primary-light: #3d6448;
+  --branding-primary: #294230;
+  --branding-primary-dark: #1b2e1f;
+
   --color-text: #fff;
   --column-width: 42rem;
   --column-margin-top: 4rem;
@@ -39,7 +44,7 @@ html {
 /* Firefox */
 * {
   scrollbar-width: auto;
-  scrollbar-color: #006cfa #000329;
+  scrollbar-color: var(--branding-primary-light) var(--branding-primary-dark);
 }
 
 /* Chrome, Edge, and Safari */
@@ -90,17 +95,15 @@ body::after {
 
 /* Light gradient */
 body::before {
-  background: linear-gradient(
-    176deg,
-    rgb(0, 128, 255) 50%,
-    rgb(0, 76, 255) 100%
-  );
+  background: linear-gradient(176deg,
+      var(--branding-primary-light) 50%,
+      var(--branding-primary) 100%);
   opacity: 1;
 }
 
 /* Dark gradient */
 body::after {
-  background: linear-gradient(176deg, rgb(0, 20, 39) 50%, rgb(0, 0, 0) 100%);
+  background: linear-gradient(176deg, rgb(0, 29, 6) 50%, rgb(0, 0, 0) 100%);
   opacity: 0;
 }
 

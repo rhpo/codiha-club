@@ -3,7 +3,6 @@
 
   import tippy from "sveltejs-tippy";
   import tilt from "vanilla-tilt-svelte";
-  import pfp from "$lib/images/icon.png";
   import Logo from "$lib/components/Logo.svelte";
 </script>
 

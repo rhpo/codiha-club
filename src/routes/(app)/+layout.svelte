@@ -70,7 +70,7 @@
     window.addEventListener("scroll", () => {
       document.documentElement.style.setProperty(
         "--rotation-degrees",
-        `${window.scrollY / 2}deg`
+        `${window.scrollY / 2}deg`,
       );
       // document.documentElement.style.setProperty('--rotation-color', `hsl(${window.scrollY / 2}, 100%, 50%)`);
       //no, we're gonna make it start from white and go orange, and NEVER go black
@@ -79,7 +79,7 @@
       // I don't like how it starts with the red color, let's change this:
       document.documentElement.style.setProperty(
         "--rotation-color",
-        `hsl(${window.scrollY / 2 + 180}, 100%, 70%)`
+        `hsl(${window.scrollY / 2 + 180}, 100%, 70%)`,
       );
     });
   });
@@ -126,7 +126,7 @@
   <section data-aos="fade-right">
     <h1 class="site-title">
       <span class="spinning">
-        <img src={logo} width="40px" style="filter: invert()" alt="CODIHA" />
+        <img src="/logo.png" width="40px" alt="CODIHA" />
       </span>
       <span class="spinning-color">CODIHA</span>
     </h1>

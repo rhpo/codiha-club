@@ -27,7 +27,7 @@
   <Button
     iconRight
     icon={faLinkedin}
-    href="https://www.linkedin.com/company/codiha/"
+    href="https://www.linkedin.com/company/codiha-club/"
     color="#0077b5"
     textColor="white"
     fullw>LinkedIN</Button
