@@ -3,7 +3,22 @@
   publish = "build"
 
 [build.environment]
-  NODE_VERSION = "20"
+  # Must stay >= 22, matching .nvmrc. @supabase/realtime-js reaches for a global
+  # WebSocket, which Node only gained in 21: on Node 20 every request that
+  # builds a Supabase client dies with "native WebSocket not found", which is a
+  # 500 on every page rather than a build failure.
+  NODE_VERSION = "22"
+
+  # Netlify's secret scanner flags any env var whose VALUE turns up in the repo.
+  # The ones below are public by nature, so of course they do: the site URL is in
+  # every canonical tag and Open Graph meta, and the sender name "CODIHA Club" is
+  # in the <title> of every single page.
+  #
+  # The list is deliberately explicit rather than a blanket disable. The real
+  # secrets - BREVO_API_KEY, SUPABASE_SERVICE_ROLE_KEY, CHECKIN_SECRET,
+  # MAIL_INBOUND_SECRET, SUPABASE_ACCESS_TOKEN - are NOT exempted, so the build
+  # still fails if one of those ever lands in a committed file.
+  SECRETS_SCAN_OMIT_KEYS = "PUBLIC_SITE_URL,PUBLIC_SUPABASE_URL,PUBLIC_SUPABASE_ANON_KEY,BREVO_SENDER_NAME,BREVO_SENDER_EMAIL,BREVO_REPLY_TO,MAIL_INBOUND_DOMAIN"
 
 [functions]
   node_bundler = "esbuild"
