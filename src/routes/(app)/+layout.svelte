@@ -1,82 +1,99 @@
 <script>
   // @ts-nocheck
   import {
-    faBook,
+    faCalendarDays,
+    faGaugeHigh,
     faHome,
     faImages,
     faInfoCircle,
-    faMessage,
-    faPhone,
+    faLaptopCode,
+    faRankingStar,
+    faScrewdriverWrench,
+    faRightToBracket,
+    faEnvelope,
     faX,
   } from "@fortawesome/free-solid-svg-icons";
-  import { navigating } from "$app/stores";
-  import { dialogOptions, menuOpen } from "$lib/store.js";
+  import { navigating, page } from "$app/stores";
+  import { busyCount, dialogOptions, menuOpen, resetBusy } from "$lib/store.js";
+  import { reportFormResult } from "$lib/ui/feedback.js";
+  import { atLeast } from "$lib/roles.js";
+  import { trackFormSubmissions } from "$lib/ui/busyForms.js";
+  import LoadingScreen from "$lib/components/LoadingScreen.svelte";
   import { onMount } from "svelte";
   import { blur, fade, slide } from "svelte/transition";
   import { Hamburger } from "svelte-hamburgers";
 
-  import logo from "$lib/images/icon.png";
-
-  import "./styles.css";
+  import "$lib/styles/base.css";
+  import "$lib/styles/platform.css";
   import "aos/dist/aos.css";
 
   import AOS from "aos";
   import Fa from "svelte-fa";
-  import Button from "$lib/ui/Button.svelte";
-  import Input from "$lib/ui/Input.svelte";
   import Alert from "$lib/ui/Alert.svelte";
   import Logo from "$lib/components/Logo.svelte";
-  import { onNavigate } from "$app/navigation";
+  import Avatar from "$lib/components/Avatar.svelte";
+  import { afterNavigate, onNavigate } from "$app/navigation";
 
   onMount(() => {
     AOS.init({
-      duration: 1000,
+      duration: 700,
+      easing: "ease-out-cubic",
+      once: true,
+      offset: 60,
       gyroscope: true,
     });
   });
 
-  let links = [
-    {
-      name: "Home",
-      icon: faHome,
-      link: "/",
-    },
-    {
-      name: "About",
-      icon: faInfoCircle,
-      link: "/articles/about",
-    },
-    {
-      name: "Story",
-      icon: faBook,
-      link: "/articles/story",
-    },
-    {
-      name: "Gallery",
-      icon: faImages,
-      link: "/articles/gallery",
-    },
-    {
-      name: "Contact",
-      icon: faPhone,
-      link: "https://www.codiha.com/contact",
-    },
+  // Client-side navigation swaps the DOM without a reload, so AOS has to be
+  // told about the new elements. Without this they stay stuck at opacity 0.
+  afterNavigate(() => AOS.refreshHard());
+
+  const links = [
+    { name: "Home", icon: faHome, link: "/" },
+    { name: "Events", icon: faCalendarDays, link: "/events" },
+    { name: "Hackathons", icon: faLaptopCode, link: "/hackathons" },
+    { name: "Leaderboard", icon: faRankingStar, link: "/leaderboard" },
+    { name: "Gallery", icon: faImages, link: "/articles/gallery" },
+    { name: "About us", icon: faInfoCircle, link: "/articles/about" },
   ];
 
-  let pageLoading = true;
-  onMount(() => {
-    pageLoading = false;
+  // Every form action in the group reports through the shared modal. Tracking
+  // the last result by identity stops it reopening on unrelated store updates.
+  let shownFormResult;
+  $: if ($page.form !== shownFormResult) {
+    shownFormResult = reportFormResult($page.form);
+  }
 
+  $: profile = $page.data?.profile ?? null;
+  $: isApproved = profile?.status === "approved";
+  $: isAdmin = isApproved && atLeast(profile?.role, "staff");
+
+  // Secondary nav entries that depend on who is looking.
+  $: accountLinks = profile
+    ? [
+        isApproved
+          ? { name: "Dashboard", icon: faGaugeHigh, link: "/dashboard" }
+          : { name: "Membership", icon: faGaugeHigh, link: "/pending" },
+        ...(isApproved
+          ? [{ name: "Mail", icon: faEnvelope, link: "/mail" }]
+          : []),
+        ...(isAdmin
+          ? [{ name: "Admin", icon: faScrewdriverWrench, link: "/admin" }]
+          : []),
+      ]
+    : [{ name: "Join the club", icon: faRightToBracket, link: "/login" }];
+
+  const isActive = (path, link) =>
+    link === "/" ? path === "/" : path === link || path.startsWith(link + "/");
+
+  onMount(() => trackFormSubmissions());
+
+  onMount(() => {
     window.addEventListener("scroll", () => {
       document.documentElement.style.setProperty(
         "--rotation-degrees",
         `${window.scrollY / 2}deg`,
       );
-      // document.documentElement.style.setProperty('--rotation-color', `hsl(${window.scrollY / 2}, 100%, 50%)`);
-      //no, we're gonna make it start from white and go orange, and NEVER go black
-
-      // document.documentElement.style.setProperty('--rotation-color', `hsl(${window.scrollY / 2}, 100%, 70%)`);
-      // I don't like how it starts with the red color, let's change this:
       document.documentElement.style.setProperty(
         "--rotation-color",
         `hsl(${window.scrollY / 2 + 180}, 100%, 70%)`,
@@ -85,15 +102,14 @@
   });
 
   let quoteShown = true;
+  $: joinNudgeVisible = quoteShown && !profile && $page.url.pathname === "/";
 
-  onNavigate(() => {
-    quoteShown = false;
-    pageLoading = true;
-    menuOpen.set(false);
-    setTimeout(() => {
-      pageLoading = false;
-    }, 500);
-  });
+  // $navigating already covers client-side navigation, so the old fixed 500ms
+  // timer was only ever adding delay to every page change.
+  onNavigate(() => menuOpen.set(false));
+
+  // A form submit that ends in a client-side redirect resolves here.
+  afterNavigate(() => resetBusy());
 </script>
 
 <div class="alert">
@@ -102,46 +118,89 @@
     bind:message={$dialogOptions.message}
     bind:title={$dialogOptions.title}
     bind:icon={$dialogOptions.icon}
+    variant={$dialogOptions.variant}
   />
 </div>
 
-{#if pageLoading || $navigating}
-  <div class="loading" transition:fade>
-    <div class="spinner" />
-  </div>
-{/if}
+<LoadingScreen active={!!$navigating || $busyCount > 0} />
 
 {#if $menuOpen}
   <menu transition:slide={{ axis: "x" }}>
     {#each links as link}
-      <a href={link.link} class:active={link.link === $navigating?.path}>
+      <a
+        href={link.link}
+        class:active={isActive($page.url.pathname, link.link)}
+        on:click={() => menuOpen.set(false)}
+      >
         <Fa icon={link.icon} />
         {link.name}
       </a>
     {/each}
+
+    <div class="menu-sep" />
+
+    {#each accountLinks as link}
+      <a
+        href={link.link}
+        class:active={isActive($page.url.pathname, link.link)}
+        on:click={() => menuOpen.set(false)}
+      >
+        <Fa icon={link.icon} />
+        {link.name}
+      </a>
+    {/each}
+
+    {#if profile}
+      <form method="POST" action="/logout" class="menu-logout">
+        <button type="submit">Sign out</button>
+      </form>
+    {/if}
   </menu>
 {/if}
 
 <nav>
-  <section data-aos="fade-right">
-    <h1 class="site-title">
+  <section>
+    <a class="site-title" href="/">
       <span class="spinning">
         <img src="/logo.png" width="40px" alt="CODIHA" />
       </span>
       <span class="spinning-color">CODIHA</span>
-    </h1>
+    </a>
 
     <div class="links">
       {#each links as link}
-        <a href={link.link}>
+        <a href={link.link} class:active={isActive($page.url.pathname, link.link)}>
           <Fa icon={link.icon} />
           {link.name}
         </a>
       {/each}
     </div>
 
-    <div class="ham">
-      <Hamburger bind:open={$menuOpen} />
+    <div class="account">
+      {#if profile}
+        <a
+          class="me"
+          href={isApproved ? "/dashboard" : "/pending"}
+          title={profile.full_name}
+        >
+          <Avatar src={profile.avatar_url} name={profile.full_name} size={32} />
+          <span class="me-name">{(profile.full_name || "Member").split(" ")[0]}</span>
+          {#if !isApproved}<span class="pill warn tiny">Pending</span>{/if}
+        </a>
+        {#if isAdmin}
+          <a class="btn sm ghost admin-link" href="/admin">
+            <Fa icon={faScrewdriverWrench} /> Admin
+          </a>
+        {/if}
+      {:else}
+        <a class="btn join" href="/login">
+          <Fa icon={faRightToBracket} /> Join the club
+        </a>
+      {/if}
+
+      <div class="ham">
+        <Hamburger bind:open={$menuOpen} />
+      </div>
     </div>
   </section>
 </nav>
@@ -159,6 +218,16 @@
     <img class="esst" src="/images/esst.png" alt="ESST" />
   </div>
 
+  <div class="foot-links">
+    <a href="/events">Events</a>
+    <a href="/hackathons">Hackathons</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/articles/about">About</a>
+    <a href="/articles/story">Our story</a>
+    <a href="/articles/gallery">Gallery</a>
+    <a href="https://www.codiha.com/contact">Contact</a>
+  </div>
+
   <p>
     {new Date().getFullYear()} CODIHA&trade; Club
   </p>
@@ -169,15 +238,13 @@
   </span>
 </div>
 
-{#if quoteShown}
+{#if joinNudgeVisible}
   <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
   <div class="quote-box" data-aos="fade-left" transition:blur>
-    <h1>JOIN US TODAY!</h1>
-
     <div class="quote">
-      <p>
-        Click the Join us button at the bottom to become a member of CODIHA!
-      </p>
+      <h1>JOIN US TODAY!</h1>
+      <p>Sign in with Google or Discord to get your member dashboard.</p>
+      <a class="btn block" href="/login">Join the club</a>
     </div>
 
     <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -197,30 +264,53 @@
     padding: 0;
     top: 0;
     left: 0;
-    width: 70%;
+    width: 78%;
+    max-width: 320px;
     height: 100dvh;
-    background-color: rgba(255, 255, 255, 0.119);
-    backdrop-filter: blur(10px);
+    background-color: var(--surface-strong);
+    backdrop-filter: blur(14px);
     border-right: 1px solid rgb(166, 197, 197);
     z-index: 4;
 
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 2rem;
-    gap: 2rem;
+    padding: 2rem 1.5rem;
+    gap: 1.25rem;
+    overflow-y: auto;
   }
 
   menu a {
     text-decoration: none;
-    font-size: 1.5rem;
-    color: var(--text-primary);
+    font-size: 1.25rem;
+    color: var(--color-text);
 
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.9rem;
 
     transition: all 0.2s ease-in-out;
+  }
+
+  menu a.active {
+    color: var(--accent);
+  }
+
+  .menu-sep {
+    height: 1px;
+    background: rgba(166, 197, 197, 0.4);
+    width: 100%;
+  }
+
+  .menu-logout button {
+    background: none;
+    border: 1px solid rgba(166, 197, 197, 0.4);
+    color: var(--color-text);
+    border-radius: 10px;
+    padding: 0.55rem 0.9rem;
+    font-family: Inter, sans-serif;
+    cursor: pointer;
+    width: 100%;
   }
 
   .sponsors {
@@ -242,7 +332,7 @@
 
   .footer {
     margin-top: 0.4rem;
-    padding: 2rem 0;
+    padding: 2rem 1rem;
     width: 100%;
     text-align: center;
     user-select: none;
@@ -260,6 +350,26 @@
     margin: 0;
   }
 
+  .foot-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 1.1rem;
+    margin-bottom: 0.9rem !important;
+  }
+
+  .foot-links a {
+    color: var(--color-text);
+    opacity: 0.8;
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+
+  .foot-links a:hover {
+    opacity: 1;
+    color: var(--accent);
+  }
+
   .subfoo,
   .subfoo * {
     font-size: 0.8rem;
@@ -274,11 +384,14 @@
   .site-title {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    text-decoration: none;
+    flex: 0 0 auto;
   }
 
   .site-title * {
     font-family: Cubano, sans-serif;
+    font-size: 1.6rem;
   }
 
   .site-title {
@@ -296,8 +409,7 @@
   }
 
   .spinning-color {
-    /* color: var(--rotation-color); */
-    color: white;
+    color: var(--color-text);
     text-shadow: 0 0 6px var(--rotation-color);
   }
 
@@ -309,13 +421,52 @@
     display: none;
   }
 
-  @media screen and (max-width: 940px) {
-    .ham {
-      display: block;
-    }
+  .account {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 0 0 auto;
+  }
 
-    .links {
-      display: none;
+  .me {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass);
+  }
+
+  .me:hover {
+    text-decoration: none;
+    border-color: var(--glass-border-strong);
+  }
+
+  .me-name {
+    font-family: Inter, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .join {
+    font-family: Inter, sans-serif;
+    font-weight: 700;
+    box-shadow: 0 8px 22px -12px var(--accent-glow);
+  }
+
+  @media screen and (max-width: 520px) {
+    /* Tighter, but still a 44px touch target next to the hamburger. */
+    .join {
+      font-size: 0.85rem;
+      padding: 0.6rem 0.9rem;
+      min-height: 44px;
+      gap: 0.4rem;
     }
   }
 
@@ -323,43 +474,17 @@
     font-family: Inter, sans-serif;
   }
 
-  .loading {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    backdrop-filter: blur(10px);
-    z-index: 9999;
-  }
-
-  .spinner {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 5px solid #fff;
-    border-top-color: transparent;
-    animation: spin 1s infinite linear;
-  }
-
   .quote-box {
     width: fit-content;
     border-radius: 15px;
     display: flex;
     flex-direction: row;
-    justify-content: center;
-    align-items: center;
+    align-items: flex-start;
 
-    max-height: var(--nav-body);
-    max-width: calc(var(--width) / 2);
-    line-height: 1;
+    max-width: min(360px, calc(100vw - 30px));
+    line-height: 1.2;
 
-    gap: 1rem;
+    gap: 0.75rem;
     padding: 1rem;
 
     position: fixed;
@@ -368,68 +493,40 @@
     right: 0;
     z-index: 3;
     backdrop-filter: blur(10px);
-    background-color: rgba(255, 255, 255, 0.119);
+    background-color: var(--surface);
     border: 1px solid rgb(166, 197, 197);
   }
 
   .quote-box h1 {
-    margin: 0;
+    margin: 0 0 0.4rem;
+    font-size: 1.25rem;
+    text-align: left;
   }
 
-  .quote-box p {
+  .quote-box .quote {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .quote-box .quote p {
     margin: 0 !important;
-  }
-
-  .quote p {
     font-family: "Inter", sans-serif !important;
-  }
-
-  @media screen and (max-width: 1080px) {
-    .quote-box h1 {
-      font-size: 1.5rem;
-    }
-
-    .quote-box .quote {
-      font-size: 0.8rem;
-      line-height: 1;
-      word-break: break-word;
-    }
-
-    .quote-box {
-      padding: 1rem;
-    }
-
-    .quote-box {
-      height: 80px;
-    }
-  }
-
-  @media screen and (max-width: 530px) {
-    .quote-box h1 {
-      font-size: 1.2rem;
-    }
-
-    .quote-box .quote {
-      font-size: 0.6rem;
-      font-weight: 100;
-      line-height: 1;
-      word-break: break-word;
-    }
+    font-size: 0.82rem;
   }
 
   :root {
-    --nav-body: 140px;
-    --nav: calc(var(--nav-body) - var(--space) * 2);
+    --nav-body: 96px;
+    /* content offset under the fixed nav */
+    --nav: var(--nav-body);
     --space: 3rem;
   }
 
-  :global(body) {
-    cursor: var(--cursor), auto;
-  }
 
   nav {
-    padding: var(--space);
-    height: calc(var(--nav-body) - var(--space) * 2);
+    padding: 0 var(--space);
+    height: var(--nav-body);
 
     display: flex;
     justify-content: center;
@@ -438,6 +535,7 @@
     width: 100%;
     z-index: 3;
 
+    background-color: var(--surface-nav);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid rgb(166, 197, 197);
   }
@@ -448,61 +546,84 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
   }
 
   nav * {
     color: var(--color-text);
   }
 
-  nav h1 {
-    margin: 0;
-  }
-
   main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
 
     min-height: 100vh;
+    width: 100%;
   }
 
   .links {
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
     align-items: center;
     height: fit-content;
-    gap: var(--space);
+    gap: 1.5rem;
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   .links a {
     text-decoration: none;
     font-family: "Inter", sans-serif;
-    font-size: 1.2rem;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
 
     transition: all 0.2s ease-in-out;
   }
 
-  .links:hover a:not(:hover) {
-    filter: blur(3px);
+  .links a.active {
+    color: var(--accent);
   }
 
-  @media screen and (max-width: 760px) {
-    nav {
-      --nav-body: 120px;
-      height: calc(var(--nav-body) - var(--space) * 2);
-    }
+  .links:hover a:not(:hover) {
+    filter: blur(2px);
+  }
 
-    :root {
-      --space: 1rem;
-    }
-
-    nav h1 {
-      font-size: 3rem;
+  @media screen and (max-width: 1180px) {
+    .ham {
+      display: block;
     }
 
     .links {
+      display: none;
+    }
+  }
+
+  @media screen and (max-width: 760px) {
+    :root {
+      --space: 1rem;
+      --nav-body: 76px;
+    }
+
+    .site-title * {
+      font-size: 1.3rem;
+    }
+
+    .me-name {
+      display: none;
+    }
+
+    .admin-link :global(span),
+    .admin-link {
+      font-size: 0.75rem;
+    }
+  }
+
+  @media screen and (max-width: 420px) {
+    .admin-link {
       display: none;
     }
   }

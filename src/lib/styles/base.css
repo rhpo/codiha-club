@@ -2,10 +2,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 
-h1 {
-  font-family: cubano;
-}
-
 body,
 html {
   margin: 0;
@@ -15,20 +11,49 @@ html {
 }
 
 :root {
-  --font-body: cubano;
+  /* Cubano is a display face: headings and short labels only. Body copy is
+     Inter. These used to be the other way round, and because the `*` rule
+     below hits every element directly (beating anything merely inherited),
+     every label, tab and hint that forgot to opt out rendered in Cubano. */
+  --font-display: cubano, sans-serif;
+  --font-body: "Inter", sans-serif;
   --font-mono: "Fira Mono", monospace;
   --font-main: "Space Grotesk", sans-serif;
   --back: #ffffff;
   --color-bg-1: hsl(209, 36%, 86%);
   --color-bg-2: hsl(224, 44%, 95%);
-  --color-theme-1: orange;
+  --color-theme-1: var(--accent, orange);
   --color-theme-2: #4075a6;
 
-  --branding-primary-light: #3d6448;
+  /* Palette defaults. The admin palette (Admin → Appearance) overrides these
+     with a `:root:root` block injected into <head> by src/routes/+layout.svelte,
+     so every shade below stays in sync with whatever colours are saved. */
+  --branding-primary-light: #3e6549;
   --branding-primary: #294230;
-  --branding-primary-dark: #1b2e1f;
+  --branding-primary-dark: #1b2c20;
+  --branding-primary-deeper: #0e1610;
+  --brand-dark-rgb: 27, 44, 32;
+  --accent: #fa9200;
+  --accent-rgb: 250, 146, 0;
+  --accent-soft: rgba(250, 146, 0, 0.15);
+  --accent-line: rgba(250, 146, 0, 0.5);
+  --accent-glow: rgba(250, 146, 0, 0.35);
+  --on-accent: #1b2c20;
+  --surface-nav: rgba(27, 44, 32, 0.4);
+  --surface: rgba(27, 44, 32, 0.72);
+  --surface-strong: rgba(27, 44, 32, 0.88);
 
+  /* Text, and every tint derived from it: the glass panels and borders are
+     the text colour at low opacity, so a dark-on-light palette still works. */
   --color-text: #fff;
+  --text-rgb: 255, 255, 255;
+  --muted: rgba(255, 255, 255, 0.65);
+  --muted-2: rgba(255, 255, 255, 0.45);
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-strong: rgba(255, 255, 255, 0.14);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-border-strong: rgba(255, 255, 255, 0.55);
+
   --column-width: 42rem;
   --column-margin-top: 4rem;
   --width: 1440px;
@@ -38,6 +63,25 @@ html {
   font-family: var(--font-body);
   color: var(--color-text);
   box-sizing: border-box;
+}
+
+/* Headings, plus anything nested in one (an icon's <span>, a highlighted word),
+   because the `*` rule above would otherwise reset the children back to Inter. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+h1 *,
+h2 *,
+h3 *,
+h4 *,
+h5 *,
+h6 *,
+.display,
+.display * {
+  font-family: var(--font-display);
 }
 
 /* ===== Scrollbar CSS ===== */
@@ -53,11 +97,11 @@ html {
 }
 
 *::-webkit-scrollbar-track {
-  background: #000329;
+  background: var(--branding-primary-deeper);
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #fa9200;
+  background-color: var(--accent);
   border-radius: 5px;
   border: 2px dotted #ffffff;
 }
@@ -103,7 +147,7 @@ body::before {
 
 /* Dark gradient */
 body::after {
-  background: linear-gradient(176deg, rgb(0, 29, 6) 50%, rgb(0, 0, 0) 100%);
+  background: linear-gradient(176deg, var(--branding-primary-deeper) 50%, #000 100%);
   opacity: 0;
 }
 

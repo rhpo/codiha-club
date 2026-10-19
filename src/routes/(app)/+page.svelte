@@ -10,18 +10,83 @@
   import SInstagram from "$lib/pages/SInstagram.svelte";
   import WhatTeach from "$lib/pages/WhatTeach.svelte";
   import Why from "$lib/pages/Why.svelte";
-
   import GetStarted from "$lib/pages/GetStarted.svelte";
+  import LandingLeaderboard from "$lib/pages/LandingLeaderboard.svelte";
+  import ScoreExplainer from "$lib/pages/ScoreExplainer.svelte";
+  import EventCard from "$lib/components/EventCard.svelte";
+  import HackathonCard from "$lib/components/HackathonCard.svelte";
+  import Fa from "svelte-fa";
+  import {
+    faCalendarDays,
+    faLaptopCode,
+  } from "@fortawesome/free-solid-svg-icons";
+
+  export let data;
 </script>
 
 <main
+  class="cursors"
   style="--default: url({def}); --pointer: url({pointer}); --text: url({text}); --interdit: url({interdit});"
 >
   <div class="autosize">
     <Hero />
     <Why />
+
+    <LandingLeaderboard
+      rows={data.leaderboard}
+      semester={data.semester}
+      meId={data.profile?.id}
+    />
+
+    <ScoreExplainer />
+
+    <section class="block" id="events">
+      <div class="section-head" data-aos="fade-right">
+        <div>
+          <span class="eyebrow">What's next</span>
+          <h2><Fa icon={faCalendarDays} /> Upcoming events</h2>
+        </div>
+        <a href="/events">All events →</a>
+      </div>
+
+      {#if data.events.length}
+        <div class="grid cols-3">
+          {#each data.events as event, i (event.id)}
+            <div class="cell" data-aos="fade-up" data-aos-delay={i * 120}>
+              <EventCard {event} />
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="empty" data-aos="fade-up">Nothing scheduled right now.</p>
+      {/if}
+    </section>
+
+    <section class="block" id="hackathons">
+      <div class="section-head" data-aos="fade-right">
+        <div>
+          <span class="eyebrow">Build something</span>
+          <h2><Fa icon={faLaptopCode} /> Open hackathons</h2>
+        </div>
+        <a href="/hackathons">All hackathons →</a>
+      </div>
+
+      {#if data.hackathons.length}
+        <div class="grid cols-2">
+          {#each data.hackathons as hackathon, i (hackathon.id)}
+            <div class="cell" data-aos="fade-up" data-aos-delay={i * 120}>
+              <HackathonCard {hackathon} />
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="empty" data-aos="fade-up">
+          No hackathon open for applications right now.
+        </p>
+      {/if}
+    </section>
+
     <WhatTeach />
-    <br />
     <br />
     <GetStarted />
     <br />
@@ -39,6 +104,19 @@
 
     --text-shadow: rgb(59 130 246);
   }
+
+  .block {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-bottom: 2rem;
+  }
+
+  .block h2 {
+    font-size: 1.8rem;
+  }
+
 
   :global(.container) {
     margin-bottom: 50px;
@@ -74,36 +152,40 @@
     font-family: "Inter", sans-serif;
   }
 
-  :global(main) {
+  /* The custom cursor images only exist on this page. These used to be
+     `:global(main ...)`, which kept applying after a client-side navigation to
+     a route where --pointer is undefined, so `cursor: var(--pointer), auto`
+     computed to `auto` and every link lost its pointer. Scoped to .cursors. */
+  :global(.cursors) {
     cursor: var(--default), auto;
   }
 
   :global(
-      main p,
-      main h1,
-      main h2,
-      main h3,
-      main h4,
-      main h5,
-      main h6,
-      main span,
-      main input,
-      main textarea
+      .cursors p,
+      .cursors h1,
+      .cursors h2,
+      .cursors h3,
+      .cursors h4,
+      .cursors h5,
+      .cursors h6,
+      .cursors span,
+      .cursors input,
+      .cursors textarea
     ) {
     cursor: var(--text), auto;
   }
 
   :global(
-      main button,
-      main input[type="button"],
-      main input[type="submit"],
-      main input[type="reset"],
-      main a,
-      main button *,
-      main input[type="button"] *,
-      main input[type="submit"] *,
-      main input[type="reset"] *,
-      main a *
+      .cursors button,
+      .cursors input[type="button"],
+      .cursors input[type="submit"],
+      .cursors input[type="reset"],
+      .cursors a,
+      .cursors button *,
+      .cursors input[type="button"] *,
+      .cursors input[type="submit"] *,
+      .cursors input[type="reset"] *,
+      .cursors a *
     ) {
     cursor: var(--pointer), auto !important;
   }
@@ -118,7 +200,8 @@
     min-height: 100vh;
     width: 100%;
 
-    padding-top: var(--nav);
+    /* clears the fixed nav, then leaves room to breathe under it */
+    padding-top: calc(var(--nav) + 2rem);
   }
 
   .autosize {
@@ -134,26 +217,16 @@
     padding: var(--space);
   }
 
-  @keyframes flipping {
-    0% {
-      transform: rotateY(0deg);
-    }
-
-    50% {
-      transform: rotateY(180deg);
-    }
-
-    100% {
-      transform: rotateY(0deg);
-    }
-  }
-
   @media screen and (max-width: 760px) {
     main {
       width: 100%;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+    }
+
+    .block h2 {
+      font-size: 1.45rem;
     }
   }
 </style>

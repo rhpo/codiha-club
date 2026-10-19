@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "wsl.exe",
+      "runtimeArgs": [
+        "-d",
+        "ubuntu",
+        "--",
+        "bash",
+        "-lc",
+        "cd /home/ramy/code/projs/codihaclub && exec ~/.nvm/versions/node/v22.23.3/bin/node node_modules/vite/bin/vite.js dev --port 5199"
+      ],
+      "port": 5199,
+      "autoPort": false
+    }
+  ]
+}

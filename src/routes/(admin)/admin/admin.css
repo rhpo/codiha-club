@@ -1,0 +1,115 @@
+/* Admin-only tweaks on top of platform.css. */
+
+.admin-main .page-head h1 {
+  font-size: 1.6rem;
+}
+
+/* The admin shell has its own sticky header, so panels sit flush. */
+.admin-main .page {
+  padding: 0;
+  max-width: none;
+}
+
+.admin-main details > summary {
+  cursor: pointer;
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 0.2rem 0;
+}
+
+.admin-main .inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.admin-main .inline-form .field {
+  flex: 1 1 140px;
+}
+
+.admin-main .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-main .toolbar input[type='search'],
+.admin-main .toolbar select {
+  font-family: Inter, sans-serif;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  min-height: 42px;
+  outline: none;
+}
+
+.admin-main .toolbar input[type='search'] {
+  flex: 1 1 200px;
+}
+
+/* --- phones ---------------------------------------------------------------
+   The admin shell has two stacked sticky bars. On a 375px screen they ate
+   most of the viewport and the header controls wrapped into each other, so
+   below 760px the tabs scroll with the page and the chrome shrinks. */
+
+@media (max-width: 760px) {
+  .admin-main .page-head h1 {
+    font-size: 1.3rem;
+  }
+
+  .admin-main .stats {
+    gap: 0.5rem;
+  }
+
+  .admin-main .panel {
+    padding: 0.9rem;
+  }
+
+  /* Forms were laid out side by side and squeezed to unusable widths. */
+  .admin-main .inline-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-main .inline-form .field,
+  .admin-main .inline-form .btn {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .admin-main .toolbar {
+    width: 100%;
+  }
+
+  .admin-main .toolbar input[type='search'],
+  .admin-main .toolbar select {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  /* A row of buttons under a table turns into a column rather than a
+     ragged two-and-a-half. */
+  .admin-main .btn-row .btn {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-main .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-main .btn-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-main .btn-row .btn {
+    width: 100%;
+  }
+}
