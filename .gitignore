@@ -5,3 +5,9 @@ node_modules/
 !.env.example
 build/
 .netlify/
+
+# One lockfile only. Netlify auto-detects pnpm whenever pnpm-lock.yaml is
+# present and installs with a frozen lockfile, so a stale pnpm lock fails the
+# build the moment package.json gains a dependency. package-lock.json is the
+# one kept current, and netlify.toml runs npm.
+pnpm-lock.yaml
