@@ -16,6 +16,7 @@ import {
 	swapDomain
 } from '../src/lib/server/mail-core.js';
 import { secretMatches } from '../src/lib/server/webhook-auth.js';
+import { missingProfileFields, profileComplete } from '../src/lib/profile.js';
 import {
 	assignableRoles,
 	atLeast,
@@ -314,5 +315,50 @@ assert.equal(swapDomain('', 'team.x.com'), null, 'no local part');
 assert.equal(swapDomain('ramy@inbox.x.com', ''), null, 'no domain');
 assert.equal(swapDomain('ramy@inbox.x.com', 'localhost'), null, 'domain needs a dot');
 assert.equal(swapDomain(null, null), null, 'null is safe');
+
+
+// --- profile completeness gate --------------------------------------------
+// Both gates run site-wide, so a bug here either locks everyone out or lets
+// half-finished accounts browse freely.
+
+const full = {
+	full_name: 'Ramy Hadid',
+	university: "ESST d'Alger",
+	field: 'Computer Science',
+	year: 'M1',
+	bio: 'I want to build things with other people.',
+	onboarded_at: '2026-10-18T00:00:00Z'
+};
+
+assert.equal(profileComplete(full), true, 'a filled profile passes');
+assert.deepEqual(missingProfileFields(full), [], 'nothing missing');
+
+// The row the signup trigger creates: no fields, no onboarded_at.
+assert.equal(profileComplete({}), false, 'a bare trigger row is incomplete');
+assert.equal(missingProfileFields({}).length, 5, 'every field reported missing');
+assert.equal(profileComplete(null), false, 'no profile is incomplete');
+
+// Submitted the form before a field became required.
+assert.equal(
+	profileComplete({ ...full, bio: null }),
+	false,
+	'onboarded but missing the new field is still incomplete'
+);
+assert.deepEqual(
+	missingProfileFields({ ...full, university: '   ' }).map((f) => f.key),
+	['university'],
+	'whitespace does not count as filled'
+);
+
+// Length floors, so "a" and "x" cannot satisfy a name or a motivation.
+assert.deepEqual(missingProfileFields({ ...full, full_name: 'Ra' }).map((f) => f.key), ['full_name'], 'name has a floor');
+assert.deepEqual(missingProfileFields({ ...full, bio: 'hi' }).map((f) => f.key), ['bio'], 'motivation has a floor');
+
+// Filled in, but never submitted: still incomplete.
+assert.equal(
+	profileComplete({ ...full, onboarded_at: null }),
+	false,
+	'unsubmitted form is incomplete'
+);
 
 console.log('selfcheck: all assertions passed');

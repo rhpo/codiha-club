@@ -20,6 +20,23 @@ const INPUT_SIZES = [416, 608, 800];
 /** Low enough for a dim phone photo, high enough that a logo is not a face. */
 const SCORE_THRESHOLD = 0.35;
 
+/**
+ * How far the nose may sit from the midpoint between the eyes before the photo
+ * counts as a side profile, as a fraction of the distance between the eyes.
+ *
+ * Face-on, the nose sits almost exactly between the eyes. Turn the head and it
+ * slides towards the near eye, while the eyes themselves crowd together, so the
+ * ratio grows quickly. 0.42 lets through a relaxed three-quarter angle and
+ * rejects a true profile.
+ */
+const MAX_NOSE_OFFSET = 0.42;
+
+/**
+ * Minimum eye separation relative to the face box width. A head turned far
+ * enough squashes the eyes together even when the nose still looks centred.
+ */
+const MIN_EYE_SPREAD = 0.2;
+
 let loader = null;
 let api = null;
 
@@ -28,7 +45,12 @@ async function ready() {
 	if (!loader) {
 		loader = (async () => {
 			const faceapi = await import('@vladmandic/face-api');
-			await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+			await Promise.all([
+				faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+				// Landmarks are what make the side-profile check possible; the
+				// tiny variant is 76 KB.
+				faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
+			]);
 			api = faceapi;
 			return faceapi;
 		})().catch((e) => {
@@ -80,22 +102,85 @@ export async function detectFace(file) {
 		// hits on the first pass, and only a photo with no face pays for all
 		// three.
 		let found = [];
+		let usedSize = INPUT_SIZES[INPUT_SIZES.length - 1];
 		for (const inputSize of INPUT_SIZES) {
 			found = await faceapi.detectAllFaces(
 				img,
 				new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold: SCORE_THRESHOLD })
 			);
-			if (found.length) break;
+			if (found.length) {
+				usedSize = inputSize;
+				break;
+			}
 		}
 
 		if (found.length === 0) return { ok: false, faces: 0, reason: 'no-face' };
 		if (found.length > 1) return { ok: false, faces: found.length, reason: 'many-faces' };
+
+		// A detected face is not necessarily a usable one: the detector happily
+		// finds a head in profile, which is no good for recognising somebody.
+		const landmarks = await faceapi
+			.detectSingleFace(
+				img,
+				// Same inputSize that found the face above. Hardcoding 416 here
+				// made this return null for any photo that needed the cascade,
+				// which quietly disabled the check on exactly the big phone
+				// photos it is meant to catch.
+				new faceapi.TinyFaceDetectorOptions({ inputSize: usedSize, scoreThreshold: SCORE_THRESHOLD })
+			)
+			.withFaceLandmarks(true);
+
+		// No landmarks means the check could not run, not that the face is bad.
+		if (!landmarks?.landmarks) return { ok: true, faces: 1 };
+
+		if (!facingCamera(landmarks)) {
+			return { ok: false, faces: 1, reason: 'not-facing' };
+		}
+
 		return { ok: true, faces: 1 };
 	} catch {
 		return { ok: false, faces: 0, reason: 'unreadable' };
 	} finally {
 		URL.revokeObjectURL(url);
 	}
+}
+
+/**
+ * Whether the head is turned far enough to be unusable.
+ *
+ * Measured from the eye centres and the nose tip rather than a pose estimator,
+ * because the tiny landmark model does not provide one and two ratios are
+ * enough to separate "looking at the camera" from "looking away".
+ */
+function facingCamera(detection) {
+	const lm = detection.landmarks;
+	const left = centre(lm.getLeftEye());
+	const right = centre(lm.getRightEye());
+	const nose = centre(lm.getNose());
+	if (!left || !right || !nose) return true;
+
+	const eyeGap = Math.hypot(right.x - left.x, right.y - left.y);
+	if (!eyeGap) return true;
+
+	const midX = (left.x + right.x) / 2;
+	const offset = Math.abs(nose.x - midX) / eyeGap;
+
+	const boxWidth = detection.detection?.box?.width ?? 0;
+	const spread = boxWidth ? eyeGap / boxWidth : 1;
+
+	return offset <= MAX_NOSE_OFFSET && spread >= MIN_EYE_SPREAD;
+}
+
+/** @param {{x: number, y: number}[]} points */
+function centre(points) {
+	if (!points?.length) return null;
+	let x = 0;
+	let y = 0;
+	for (const p of points) {
+		x += p.x;
+		y += p.y;
+	}
+	return { x: x / points.length, y: y / points.length };
 }
 
 function loadImage(src) {
@@ -112,6 +197,8 @@ export const FACE_MESSAGES = {
 	'no-file': 'Choose a photo first.',
 	'no-face': 'No face found in that photo. Use a clear, well-lit photo of yourself.',
 	'many-faces': 'That photo has more than one person in it. Use a photo of just you.',
+	'not-facing':
+		'Please look straight at the camera. That photo is too side-on to recognise you by.',
 	unreadable: 'That image could not be read. Try a different file.',
 	unavailable: 'The face check could not run. Your photo was saved for review.'
 };

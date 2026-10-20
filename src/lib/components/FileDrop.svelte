@@ -18,24 +18,45 @@
 	export let existingLabel = 'Current file';
 	/** Fires with the chosen File list whenever the selection changes. */
 	export let onPick = null;
+	/** Hard ceiling per file. Anything larger is refused without uploading. */
+	export let maxBytes = 0;
+	/**
+	 * Applied to each file before it is stored, e.g. downscaling a photo. It
+	 * runs inside the component so the transformed file is what the form posts.
+	 * @type {null | ((file: File) => Promise<File> | File)}
+	 */
+	export let transform = null;
 
 	let input;
 	let over = false;
+	let rejected = '';
 	/** @type {{name: string, size: number, url: string|null}[]} */
 	let picked = [];
 
 	const isImage = (f) => f && typeof f.type === 'string' && f.type.startsWith('image/');
-	const looksLikeImage = (s) => typeof s === 'string' && /\.(png|jpe?g|webp|avif|gif)(\?|$)/i.test(s);
+	const looksLikeImage = (s) =>
+		typeof s === 'string' && /\.(png|jpe?g|webp|avif|gif)(\?|$)/i.test(s);
 
 	const readable = (bytes) =>
-		bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
+		bytes >= 1024 * 1024
+			? (bytes / 1024 / 1024).toFixed(1) + ' MB'
+			: Math.ceil(bytes / 1024) + ' KB';
 
 	/** Object URLs pin the whole file in memory until released. */
 	const releasePreviews = () => {
 		for (const p of picked) if (p.url) URL.revokeObjectURL(p.url);
 	};
 
-	function describe(files) {
+	/** Drops the selection and tells the parent nothing is chosen. */
+	function reset() {
+		releasePreviews();
+		picked = [];
+		if (input) input.value = '';
+		onPick?.([]);
+	}
+
+	/** Renders the chosen files and notifies the parent. */
+	function show(files) {
 		releasePreviews();
 		picked = [...files].map((f) => ({
 			name: f.name,
@@ -45,7 +66,34 @@
 		onPick?.(files);
 	}
 
-	const onChange = (e) => describe(e.target.files ?? []);
+	async function accept_(files) {
+		rejected = '';
+		let list = [...files];
+		if (!list.length) return reset();
+
+		if (maxBytes) {
+			const over = list.find((f) => f.size > maxBytes);
+			if (over) {
+				// Refused before any transform or upload: a huge file should not
+				// cost the member a long wait just to be told no.
+				rejected = over.name + ' is ' + readable(over.size) + '. The limit is ' + readable(maxBytes) + '.';
+				reset();
+				return;
+			}
+		}
+
+		if (transform) {
+			list = await Promise.all(list.map((f) => transform(f)));
+			// Write them back, or the form would still post the originals.
+			const dt = new DataTransfer();
+			for (const f of list) dt.items.add(f);
+			input.files = dt.files;
+		}
+
+		show(list);
+	}
+
+	const onChange = (e) => accept_(e.target.files ?? []);
 
 	function onDrop(e) {
 		e.preventDefault();
@@ -57,14 +105,24 @@
 		const dt = new DataTransfer();
 		for (const f of multiple ? files : [files[0]]) dt.items.add(f);
 		input.files = dt.files;
-		describe(input.files);
+		accept_(input.files);
 	}
 
+	/**
+	 * Put a file into the real input from outside the component, so a photo
+	 * taken with the camera submits through the same form as a dropped one.
+	 * Reached with bind:this.
+	 * @param {File[] | FileList} incoming
+	 */
+	export function setFiles(incoming) {
+		const dt = new DataTransfer();
+		for (const f of incoming) dt.items.add(f);
+		input.files = dt.files;
+		accept_(input.files);
+	}
 	function clear() {
-		releasePreviews();
-		picked = [];
-		input.value = '';
-		onPick?.([]);
+		rejected = '';
+		reset();
 	}
 
 	onDestroy(releasePreviews);
@@ -101,6 +159,10 @@
 				<span class="tiny muted">or click to browse{hint ? ` · ${hint}` : ''}</span>
 			</span>
 		</button>
+
+		{#if rejected}
+			<p class="rejected">{rejected}</p>
+		{/if}
 
 		{#if picked.length}
 			<ul class="files">
@@ -275,6 +337,13 @@
 	}
 
 	.clear:hover {
+		color: var(--bad);
+	}
+
+	.rejected {
+		margin: 0;
+		font-family: Inter, sans-serif;
+		font-size: 0.82rem;
 		color: var(--bad);
 	}
 </style>

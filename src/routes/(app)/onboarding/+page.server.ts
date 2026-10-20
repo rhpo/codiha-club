@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { uploadAvatar } from '$lib/server/upload';
+import { missingProfileFields, profileComplete } from '$lib/profile.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -7,11 +8,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!user) throw redirect(303, '/login?next=/onboarding');
 
 	const profile = await locals.getProfile();
-	if (profile?.onboarded_at && url.searchParams.get('edit') !== '1') {
+	if (profile && profileComplete(profile) && url.searchParams.get('edit') !== '1') {
 		throw redirect(303, profile.status === 'approved' ? '/dashboard' : '/pending');
 	}
 
-	return { profile, email: user.email ?? null };
+	return {
+		profile,
+		email: user.email ?? null,
+		missing: missingProfileFields(profile),
+		next: url.searchParams.get('next') ?? '/dashboard'
+	};
 };
 
 export const actions: Actions = {
@@ -44,6 +50,12 @@ export const actions: Actions = {
 		if (!university) return fail(400, { error: 'Please pick your university.', values });
 		if (!field) return fail(400, { error: 'Please pick your field of study.', values });
 		if (!year) return fail(400, { error: 'Please pick your current year.', values });
+		if (values.bio === null || values.bio.length < 10) {
+			return fail(400, {
+				error: 'Tell us in a sentence or two why you joined.',
+				values
+			});
+		}
 
 		// A new picture is optional on every save; when none is supplied the
 		// existing avatar_url is left alone by being absent from the patch.
@@ -90,6 +102,8 @@ export const actions: Actions = {
 			});
 		}
 
-		throw redirect(303, saved.status === 'approved' ? '/dashboard' : '/pending');
+		if (saved.status !== 'approved') throw redirect(303, '/pending');
+		const next = String(form.get('next') ?? '/dashboard');
+		throw redirect(303, next.startsWith('/') ? next : '/dashboard');
 	}
 };

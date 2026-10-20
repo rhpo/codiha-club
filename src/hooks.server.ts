@@ -3,6 +3,7 @@ import { error, redirect, type Handle } from '@sveltejs/kit';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { loadTheme } from '$lib/server/settings';
 import { atLeast, needsFacePhoto } from '$lib/roles.js';
+import { profileComplete } from '$lib/profile.js';
 import { themeCss } from '$lib/theme';
 import type { Profile } from '$lib/types';
 
@@ -12,10 +13,17 @@ const THEME_SLOT = '<style id="codiha-theme"></style>';
 /** Paths that require a logged-in, approved member. */
 const MEMBER_ONLY = ['/dashboard', '/vote', '/checkin', '/mail'];
 /**
- * Signed-in areas that stay reachable without a verified face photo, so the
- * requirement cannot trap somebody: the photo page itself, and the way out.
+ * Reachable while a signed-in account is still incomplete, so the requirement
+ * can never trap anybody: the two pages that fix it, the way out, the OAuth
+ * callback, and the waiting room.
  */
-const PHOTO_EXEMPT = ['/photo', '/logout', '/auth', '/onboarding', '/pending'];
+const GATE_EXEMPT = ['/photo', '/onboarding', '/logout', '/auth', '/pending'];
+
+/**
+ * Never gated, whatever the account's state. Redirecting these would turn a
+ * data fetch or a file download into a confusing 303 rather than a prompt.
+ */
+const NEVER_GATED = ['/api', '/certificates', '/verify', '/checkin'];
 /** Paths that require role = 'admin'. */
 const ADMIN_ONLY = ['/admin'];
 
@@ -101,17 +109,36 @@ export const handle: Handle = async ({ event, resolve }) => {
 			throw redirect(303, `/login?next=${encodeURIComponent(event.url.pathname + event.url.search)}`);
 		}
 		const profile = await event.locals.getProfile();
-		if (!profile?.onboarded_at) throw redirect(303, '/onboarding');
-		if (profile.status !== 'approved') throw redirect(303, '/pending');
+		// Approval is checked here; completeness and the photo are handled by the
+		// site-wide gate below, which also covers the public pages.
+		if (profile && profile.status !== 'approved') throw redirect(303, '/pending');
 		// 'staff' is the floor for /admin; each route then asks for the rank it
 		// actually needs, and RLS refuses anything that slips through.
-		if (needsAdmin && !atLeast(profile.role, 'staff')) throw redirect(303, '/dashboard');
+		if (needsAdmin && !atLeast(profile?.role, 'staff')) throw redirect(303, '/dashboard');
+	}
 
-		// Everyone but the Developer needs a photo of their face before the
-		// member area opens. Public pages are untouched: this only gates the
-		// signed-in parts, so browsing the site still works.
-		if (needsFacePhoto(profile) && !startsWithAny(path, PHOTO_EXEMPT)) {
-			throw redirect(303, `/photo?next=${encodeURIComponent(path + event.url.search)}`);
+	// ---- the two things every signed-in account must have ------------------
+	//
+	// Applied to the WHOLE site, not just the member area: somebody halfway
+	// through signing up could otherwise browse /, /events and the rest
+	// indefinitely and never be asked. Signed-out visitors are untouched, so
+	// the public site is still public.
+	if (!startsWithAny(path, GATE_EXEMPT) && !startsWithAny(path, NEVER_GATED)) {
+		const user = await event.locals.getUser();
+		if (user) {
+			const profile = await event.locals.getProfile();
+			const back = encodeURIComponent(path + event.url.search);
+
+			// 1. Who are you? Required of every role, the Developer included.
+			if (!profileComplete(profile)) {
+				throw redirect(303, `/onboarding?next=${back}`);
+			}
+
+			// 2. What do you look like? Everyone but the Developer, who has to
+			//    stay able to get in and fix a face check that is itself broken.
+			if (needsFacePhoto(profile)) {
+				throw redirect(303, `/photo?next=${back}`);
+			}
 		}
 	}
 

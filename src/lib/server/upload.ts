@@ -2,8 +2,12 @@ import { supabaseAdmin } from './supabaseAdmin';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/gif'];
-/** Avatars are shown at 64px at most, so 2 MB is already generous. */
-const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+/**
+ * Matches MAX_UPLOAD_BYTES in src/lib/image.js. The browser downscales before
+ * posting, so what actually arrives here is a few hundred KB; this is the
+ * backstop for anything that skips the client path.
+ */
+const AVATAR_MAX_BYTES = 20 * 1024 * 1024;
 
 /**
  * Upload an event/hackathon cover to the public `covers` bucket.
@@ -44,7 +48,7 @@ export async function uploadAvatar(file: unknown, memberId: string): Promise<str
 		throw new Error('Your picture must be a PNG, JPEG, WebP, AVIF or GIF image.');
 	}
 	if (file.size > AVATAR_MAX_BYTES) {
-		throw new Error('Your picture must be smaller than 2 MB.');
+		throw new Error('Your picture must be smaller than 20 MB.');
 	}
 
 	const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');

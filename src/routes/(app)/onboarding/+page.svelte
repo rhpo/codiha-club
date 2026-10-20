@@ -4,6 +4,7 @@
 	import { onDestroy } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FileDrop from '$lib/components/FileDrop.svelte';
+	import { downscaleImage, MAX_UPLOAD_BYTES } from '$lib/image.js';
 
 	export let data;
 	export let form;
@@ -44,9 +45,17 @@
 		</p>
 	</div>
 
+	{#if data.missing?.length && !form?.error}
+		<div class="notice warn">
+			Before you can use the site we need a few details:
+			<strong>{data.missing.map((m) => m.label).join(', ')}</strong>.
+		</div>
+	{/if}
+
 	{#if form?.error}<div class="notice bad">{form.error}</div>{/if}
 
 	<form class="panel form" method="POST" enctype="multipart/form-data">
+		<input type="hidden" name="next" value={data.next} />
 		<div class="pfp">
 			<Avatar src={preview ?? data.profile?.avatar_url} name={v('full_name')} size={84} />
 			<div class="pfp-copy">
@@ -63,7 +72,9 @@
 					name="avatar"
 					accept="image/*"
 					label="Drop a photo"
-					hint="PNG, JPEG or WebP, max 2 MB"
+					hint="PNG, JPEG or WebP, up to 20 MB"
+					maxBytes={MAX_UPLOAD_BYTES}
+					transform={downscaleImage}
 					onPick={pickPicture}
 				/>
 			</div>
@@ -131,10 +142,14 @@
 		</label>
 
 		<label class="field">
-			<span>Short bio (optional)</span>
-			<textarea name="bio" placeholder="What are you building? What do you want to learn?"
-				>{v('bio')}</textarea
+			<span>Why did you join? *</span>
+			<textarea
+				name="bio"
+				required
+				minlength="10"
+				placeholder="What are you building? What do you want to learn?">{v('bio')}</textarea
 			>
+			<span class="hint">A sentence or two is plenty.</span>
 		</label>
 
 		<button class="btn block" type="submit">
