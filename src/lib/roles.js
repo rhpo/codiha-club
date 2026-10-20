@@ -135,20 +135,3 @@ export function quotaState(quota) {
 	const remaining = Math.max(0, limit - used);
 	return { unlimited: false, used, limit, remaining, exceeded: used >= limit };
 }
-
-/**
- * Whether this person must upload a photo of their face before they can use
- * the member area.
- *
- * The Developer is exempt: they are the one who has to be able to get in and
- * fix things when the face check itself is what is broken. Everyone else,
- * every role, is asked once and not again.
- *
- * @param {{role?: string|null, status?: string|null, avatar_face_verified?: boolean|null} | null | undefined} profile
- */
-export function needsFacePhoto(profile) {
-	if (!profile) return false;
-	if (profile.status !== 'approved') return false;
-	if (rankOf(profile.role) >= RANK.superadmin) return false;
-	return !profile.avatar_face_verified;
-}

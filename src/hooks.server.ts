@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { error, redirect, type Handle } from '@sveltejs/kit';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { loadTheme } from '$lib/server/settings';
-import { atLeast, needsFacePhoto } from '$lib/roles.js';
+import { atLeast } from '$lib/roles.js';
 import { themeCss } from '$lib/theme';
 import type { Profile } from '$lib/types';
 
@@ -11,11 +11,6 @@ const THEME_SLOT = '<style id="codiha-theme"></style>';
 
 /** Paths that require a logged-in, approved member. */
 const MEMBER_ONLY = ['/dashboard', '/vote', '/checkin', '/mail'];
-/**
- * Signed-in areas that stay reachable without a verified face photo, so the
- * requirement cannot trap somebody: the photo page itself, and the way out.
- */
-const PHOTO_EXEMPT = ['/photo', '/logout', '/auth', '/onboarding', '/pending'];
 /** Paths that require role = 'admin'. */
 const ADMIN_ONLY = ['/admin'];
 
@@ -106,13 +101,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		// 'staff' is the floor for /admin; each route then asks for the rank it
 		// actually needs, and RLS refuses anything that slips through.
 		if (needsAdmin && !atLeast(profile.role, 'staff')) throw redirect(303, '/dashboard');
-
-		// Everyone but the Developer needs a photo of their face before the
-		// member area opens. Public pages are untouched: this only gates the
-		// signed-in parts, so browsing the site still works.
-		if (needsFacePhoto(profile) && !startsWithAny(path, PHOTO_EXEMPT)) {
-			throw redirect(303, `/photo?next=${encodeURIComponent(path + event.url.search)}`);
-		}
 	}
 
 	// The palette has to land in <head> before first paint, so it is injected

@@ -35,7 +35,6 @@
 		"@supabase/ssr": "^0.12.7",
 		"@supabase/supabase-js": "^2.118.0",
 		"@sveltejs/adapter-netlify": "^2.0.8",
-		"@vladmandic/face-api": "^1.7.15",
 		"aos": "^2.3.4",
 		"marked": "^16.3.0",
 		"pdf-lib": "^1.17.1",
