@@ -31,7 +31,7 @@
 	</div>
 	<div class="stat">
 		<span class="value">{data.counts.events}</span>
-		<span class="label"><Fa icon={faCalendarDays} /> Events</span>
+		<span class="label"><Fa icon={faCalendarDays} /> Workshops</span>
 	</div>
 	<div class="stat">
 		<span class="value">{data.counts.hackathons}</span>

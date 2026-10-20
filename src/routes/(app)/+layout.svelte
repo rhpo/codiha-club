@@ -50,7 +50,7 @@
 
   const links = [
     { name: "Home", icon: faHome, link: "/" },
-    { name: "Events", icon: faCalendarDays, link: "/events" },
+    { name: "Workshops", icon: faCalendarDays, link: "/events" },
     { name: "Hackathons", icon: faLaptopCode, link: "/hackathons" },
     { name: "Leaderboard", icon: faRankingStar, link: "/leaderboard" },
     { name: "Gallery", icon: faImages, link: "/articles/gallery" },
@@ -221,7 +221,7 @@
   </div>
 
   <div class="foot-links">
-    <a href="/events">Events</a>
+    <a href="/events">Workshops</a>
     <a href="/hackathons">Hackathons</a>
     <a href="/leaderboard">Leaderboard</a>
     <a href="/articles/about">About</a>

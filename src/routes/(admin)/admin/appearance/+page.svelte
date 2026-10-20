@@ -151,7 +151,7 @@
 		<div class="frame">
 			<div class="frame-nav">
 				<strong>CODIHA</strong>
-				<span class="frame-link">Events</span>
+				<span class="frame-link">Workshops</span>
 				<span class="frame-link on">Leaderboard</span>
 				<span class="frame-cta">Join the club</span>
 			</div>

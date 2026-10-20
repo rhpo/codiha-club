@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Events | CODIHA Club</title>
+	<title>Workshops & Events | CODIHA Club</title>
 	<meta
 		name="description"
 		content="Workshops, talks and meetups run by CODIHA Club at ESST Algiers. Register, check in with a QR scan and earn points."
@@ -17,7 +17,7 @@
 <div class="page">
 	<div class="page-head" data-aos="fade-down">
 		<span class="eyebrow">Workshops · Talks · Meetups</span>
-		<h1>Events</h1>
+		<h1>Workshops & Events</h1>
 		<p>
 			Register in one tap, show up, scan the QR on the screen and the points land in your account
 			automatically.

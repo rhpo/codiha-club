@@ -49,7 +49,7 @@
 			badge: data.pendingApplications,
 			min: "staff",
 		},
-		{ name: "Events", icon: faCalendarDays, href: "/admin/events", min: "project_manager" },
+		{ name: "Workshops", icon: faCalendarDays, href: "/admin/events", min: "project_manager" },
 		{ name: "Votes", icon: faCheckToSlot, href: "/admin/polls", min: "project_manager" },
 		{ name: "Users", icon: faUserShield, href: "/admin/users", min: "admin" },
 		{ name: "Campaigns", icon: faEnvelope, href: "/admin/mail", min: "admin" },

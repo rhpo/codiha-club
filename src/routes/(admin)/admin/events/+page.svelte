@@ -17,7 +17,7 @@
 
 <div class="spread">
 	<div class="page-head">
-		<h1>Events</h1>
+		<h1>Workshops & Events</h1>
 		<p>{data.events.length} total</p>
 	</div>
 	<button class="btn" on:click={() => (showNew = !showNew)}>
