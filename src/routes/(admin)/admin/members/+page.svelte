@@ -18,7 +18,11 @@
 		selected = new Set(selected);
 	};
 
-	$: pendingIds = data.members.filter((m) => m.status === 'pending').map((m) => m.id);
+	// Somebody who abandoned the form has nothing to approve: no university,
+	// no field, no year. They are excluded from selection and bulk actions.
+	$: pendingIds = data.members
+		.filter((m) => m.status === 'pending' && m.onboarded_at)
+		.map((m) => m.id);
 	const statusTone = { pending: 'warn', approved: 'ok', rejected: 'bad' };
 </script>
 
@@ -26,7 +30,10 @@
 
 <div class="page-head">
 	<h1>Members</h1>
-	<p>{data.tally.all} accounts · {data.tally.pending ?? 0} pending · {data.tally.approved ?? 0} approved</p>
+	<p>
+		{data.tally.all} accounts · {data.tally.pending ?? 0} awaiting approval ·
+		{data.tally.approved ?? 0} approved · {data.tally.incomplete ?? 0} never finished signing up
+	</p>
 </div>
 
 {#if form?.error}<div class="notice bad">{form.error}</div>{/if}
@@ -35,7 +42,7 @@
 <form class="toolbar" method="GET">
 	<input type="search" name="q" value={data.filter.q} placeholder="Search name, email, university…" />
 	<select name="status">
-		{#each ['all', 'pending', 'approved', 'rejected'] as s}
+		{#each ['all', 'incomplete', 'pending', 'approved', 'rejected'] as s}
 			<option value={s} selected={data.filter.status === s}>
 				{s} {s !== 'all' ? `(${data.tally[s] ?? 0})` : `(${data.tally.all})`}
 			</option>
@@ -84,7 +91,7 @@
 			{#each data.members as m (m.id)}
 				<tr>
 					<td>
-						{#if m.status === 'pending'}
+						{#if m.status === 'pending' && m.onboarded_at}
 							<input
 								type="checkbox"
 								checked={selected.has(m.id)}
@@ -108,7 +115,30 @@
 					<td class="tiny">{m.university ?? '-'}<br /><span class="muted">{m.field ?? ''}</span></td>
 					<td class="tiny">{m.year ?? '-'}</td>
 					<td class="num"><strong>{data.pointsBy[m.id]?.semester ?? 0}</strong></td>
-					<td><span class="pill {statusTone[m.status]}">{m.status}</span></td>
+					<td>
+						{#if !m.onboarded_at}
+							<span class="pill" title="Signed in but never completed the form">
+								incomplete
+							</span>
+						{:else}
+							<span class="pill {statusTone[m.status]}">{m.status}</span>
+						{/if}
+						{#if m.status === 'approved' && m.role !== 'superadmin'}
+							<form method="POST" action="?/verifyPhoto" class="photo-form">
+								<input type="hidden" name="id" value={m.id} />
+								<input type="hidden" name="verified" value={m.avatar_face_verified ? '0' : '1'} />
+								<button
+									class="pill {m.avatar_face_verified ? 'ok' : 'warn'} photo-btn"
+									type="submit"
+									title={m.avatar_face_verified
+										? 'Photo approved. Click to ask for a new one.'
+										: 'No verified face photo. Click to approve the current one.'}
+								>
+									{m.avatar_face_verified ? 'photo ok' : 'no photo'}
+								</button>
+							</form>
+						{/if}
+					</td>
 					<td class="tiny muted">{formatDate(m.created_at)}</td>
 					<td>
 						<div class="row">
@@ -237,5 +267,13 @@
 	}
 	td form {
 		margin: 0;
+	}
+	.photo-form {
+		margin: 0.3rem 0 0;
+	}
+
+	.photo-btn {
+		cursor: pointer;
+		font-family: Inter, sans-serif;
 	}
 </style>

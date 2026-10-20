@@ -22,8 +22,16 @@
 
 [functions]
   node_bundler = "esbuild"
-  # pdf-lib + qrcode are bundled into the SSR function
-  external_node_modules = []
+
+  # pdf-lib and qrcode are bundled into the SSR function as normal.
+  #
+  # face-api MUST stay external. Netlify bundles with platform=node, so the
+  # import resolves to dist/face-api.node.js, which does
+  # require("@tensorflow/tfjs-node") - a native module that is not installed.
+  # Bundling it breaks the function at load time, and a function that will not
+  # load is a 502 on EVERY route, not just the page that uses it. It is only
+  # ever imported in the browser, so leaving it external costs nothing.
+  external_node_modules = ["@vladmandic/face-api", "@tensorflow/tfjs-node"]
 
 # SPA/SSR routing is handled by the adapter-generated _redirects.
 [[headers]]
