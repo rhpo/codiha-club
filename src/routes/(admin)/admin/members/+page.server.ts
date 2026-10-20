@@ -4,6 +4,7 @@ import { ROLES, ROLE_LABELS, assignableRoles, canAssignTo } from '$lib/roles.js'
 import type { Role } from '$lib/types';
 import { sendMail, wrapHtml } from '$lib/server/brevo';
 import { loadTheme } from '$lib/server/settings';
+import { supabaseAdmin } from '$lib/server/supabaseAdmin';
 import { derive, type Theme } from '$lib/theme';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -18,7 +19,13 @@ export const load: PageServerLoad = async (event) => {
 	const safeQ = q.replace(/[,()*%\\]/g, ' ').trim();
 
 	let query = sb.from('profiles').select('*').order('created_at', { ascending: false });
-	if (status !== 'all') query = query.eq('status', status);
+	// "incomplete" is not a stored status: it is somebody who signed in with
+	// Google or Discord (which creates the row) and then abandoned the form, so
+	// they have no university, field or year. They are not waiting on a
+	// decision, so they do not belong in the approval queue.
+	if (status === 'incomplete') query = query.is('onboarded_at', null);
+	else if (status === 'pending') query = query.eq('status', 'pending').not('onboarded_at', 'is', null);
+	else if (status !== 'all') query = query.eq('status', status);
 	if (safeQ) {
 		query = query.or(
 			`full_name.ilike.%${safeQ}%,email.ilike.%${safeQ}%,university.ilike.%${safeQ}%`
@@ -28,7 +35,7 @@ export const load: PageServerLoad = async (event) => {
 	const [members, points, counts] = await Promise.all([
 		query.limit(400),
 		sb.from('my_points').select('member_id,semester_points,total_points'),
-		sb.from('profiles').select('status')
+		sb.from('profiles').select('status,onboarded_at')
 	]);
 
 	const pointsBy: Record<string, { semester: number; total: number }> = {};
@@ -36,9 +43,16 @@ export const load: PageServerLoad = async (event) => {
 		pointsBy[p.member_id] = { semester: p.semester_points ?? 0, total: p.total_points ?? 0 };
 	}
 
-	const tally = { all: 0, pending: 0, approved: 0, rejected: 0 } as Record<string, number>;
+	const tally = { all: 0, pending: 0, approved: 0, rejected: 0, incomplete: 0 } as Record<
+		string,
+		number
+	>;
 	for (const row of counts.data ?? []) {
 		tally.all++;
+		if (!row.onboarded_at) {
+			tally.incomplete++;
+			continue; // counted once, as incomplete rather than pending
+		}
 		tally[row.status] = (tally[row.status] ?? 0) + 1;
 	}
 
@@ -179,6 +193,41 @@ export const actions: Actions = {
 
 		if (error) return fail(400, { error: error.message });
 		return { success: `${amount > 0 ? '+' : ''}${amount} points recorded.` };
+	},
+
+	/**
+	 * Manual override for the face check.
+	 *
+	 * Detection runs in the browser and gets it wrong: poor light, a headscarf,
+	 * glasses, an unusual angle. Without a way for a human to say "that is
+	 * clearly them", a false negative would lock a member out of the whole
+	 * member area permanently.
+	 */
+	verifyPhoto: async (event) => {
+		await requireStaff(event);
+		const form = await event.request.formData();
+		const id = String(form.get('id') ?? '');
+		const verified = String(form.get('verified') ?? '') === '1';
+		if (!id) return fail(400, { error: 'Missing member id' });
+
+		// The profiles_protect trigger blocks this column for anyone below
+		// admin, so it goes through the service role after the staff check.
+		const { data, error } = await supabaseAdmin()
+			.from('profiles')
+			.update({
+				avatar_face_verified: verified,
+				avatar_verified_at: verified ? new Date().toISOString() : null
+			})
+			.eq('id', id)
+			.select('full_name')
+			.maybeSingle();
+
+		if (error) return fail(400, { error: error.message });
+		return {
+			success: verified
+				? `${data?.full_name || 'Member'}'s photo approved.`
+				: `${data?.full_name || 'Member'} will be asked for a new photo.`
+		};
 	},
 
 	setRole: async (event) => {
