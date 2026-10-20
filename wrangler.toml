@@ -1,0 +1,22 @@
+# Cloudflare Pages configuration.
+#
+# `name` MUST match the Pages project name in the Cloudflare dashboard. If the
+# project is called something else, change it here or the build will not bind.
+name = "codihaclub"
+
+# Fixes the "Output directory '.svelte-kit/cloudflare' not found" failure:
+# adapter-cloudflare writes here, so Pages is told to look here. The dashboard
+# "Build output directory" field must be left blank for this to take effect.
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# SvelteKit SSR on Pages runs on workerd, not Node. nodejs_compat is what
+# provides Buffer and node:crypto, which the app needs for:
+#   * HMAC check-in tokens      (src/lib/server/checkin-core.js)
+#   * the webhook secret check  (src/lib/server/webhook-auth.js)
+#   * base64 handling           (src/lib/server/upload.ts, certificate.ts)
+#
+# The date must stay >= 2024-09-23: that is when nodejs_compat started exposing
+# the Node globals without an explicit `node:` import, which the bundled
+# dependencies rely on.
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]

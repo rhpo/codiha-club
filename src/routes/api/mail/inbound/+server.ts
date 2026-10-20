@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	}
 
 	const provided = url.searchParams.get('key') ?? request.headers.get('x-webhook-key') ?? '';
-	if (!provided || !secretMatches(provided, expected)) {
+	if (!provided || !(await secretMatches(provided, expected))) {
 		throw error(401, 'Bad webhook key');
 	}
 

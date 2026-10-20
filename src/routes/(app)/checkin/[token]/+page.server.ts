@@ -27,7 +27,7 @@ export const load: PageServerLoad = async (event) => {
 	let points = 0;
 	let detail: string | null = null;
 
-	const verdict = verifyCheckinToken(event.params.token);
+	const verdict = await verifyCheckinToken(event.params.token);
 
 	if (!verdict.ok) {
 		outcome = verdict.reason === 'expired' ? 'expired' : 'invalid';

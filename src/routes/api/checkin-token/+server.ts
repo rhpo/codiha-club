@@ -19,7 +19,7 @@ export const GET: RequestHandler = async (event) => {
 	if (!ev) throw error(404, 'Event not found');
 
 	const open = ev.status !== 'cancelled' && isCheckinWindowOpen(ev.starts_at, ev.ends_at);
-	const { token, windowSeconds, expiresInMs } = issueCheckinToken(ev.id);
+	const { token, windowSeconds, expiresInMs } = await issueCheckinToken(ev.id);
 
 	const [{ count: attendance }, { count: registered }] = await Promise.all([
 		event.locals.supabase

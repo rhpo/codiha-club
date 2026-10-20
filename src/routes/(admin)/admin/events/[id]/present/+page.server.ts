@@ -15,7 +15,7 @@ export const load: PageServerLoad = async (event) => {
 	if (!clubEvent) throw error(404, 'Event not found');
 
 	const open = clubEvent.status !== 'cancelled' && isCheckinWindowOpen(clubEvent.starts_at, clubEvent.ends_at);
-	const issued = open ? issueCheckinToken(clubEvent.id) : null;
+	const issued = open ? await issueCheckinToken(clubEvent.id) : null;
 
 	const [{ count: attendance }, { count: registered }] = await Promise.all([
 		event.locals.supabase

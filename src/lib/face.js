@@ -12,7 +12,7 @@
  * The point is to stop people using a cartoon, not to defeat an attacker.
  */
 
-const MODEL_URL = '/models';
+const MODEL_URL = "/models";
 
 /** Tried in order until a face turns up. See the comment in detectFace(). */
 const INPUT_SIZES = [416, 608, 800];
@@ -53,32 +53,42 @@ let api = null;
 
 /** Loads the library and weights once; later calls reuse the same promise. */
 async function ready() {
-	if (!loader) {
-		loader = (async () => {
-			const faceapi = await import('@vladmandic/face-api');
-			await Promise.all([
-				faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-				// Landmarks are what make the side-profile check possible; the
-				// tiny variant is 76 KB.
-				faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
-			]);
-			api = faceapi;
-			return faceapi;
-		})().catch((e) => {
-			// Reset so a transient network failure can be retried rather than
-			// poisoning every later attempt.
-			loader = null;
-			throw e;
-		});
-	}
-	return loader;
+  // Rollup evaluates import.meta.env.SSR to a literal `true` when building the
+  // server bundle, which lets it drop everything below as dead code. Without
+  // this guard the whole ~1.5 MB model runner is bundled into the serverless
+  // function, which never reaches this path anyway.
+  //
+  // It throws rather than returning null so that if it ever IS reached, the
+  // caller's catch turns it into reason 'unavailable' instead of a TypeError
+  // on the next line.
+  if (import.meta.env.SSR) throw new Error("Face detection is browser-only");
+
+  if (!loader) {
+    loader = (async () => {
+      const faceapi = await import("@vladmandic/face-api");
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        // Landmarks are what make the side-profile check possible; the
+        // tiny variant is 76 KB.
+        faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+      ]);
+      api = faceapi;
+      return faceapi;
+    })().catch((e) => {
+      // Reset so a transient network failure can be retried rather than
+      // poisoning every later attempt.
+      loader = null;
+      throw e;
+    });
+  }
+  return loader;
 }
 
 /** Start fetching the model early, e.g. when the photo page mounts. */
 export function warmUp() {
-	ready().catch(() => {
-		/* preloading is best effort */
-	});
+  ready().catch(() => {
+    /* preloading is best effort */
+  });
 }
 
 /**
@@ -89,77 +99,84 @@ export function warmUp() {
  * one is too, because a group photo does not identify the member.
  */
 export async function detectFace(file) {
-	if (!file) return { ok: false, faces: 0, reason: 'no-file' };
+  if (!file) return { ok: false, faces: 0, reason: "no-file" };
 
-	let faceapi;
-	try {
-		faceapi = await ready();
-	} catch {
-		// The detector could not load at all. Refusing the upload here would
-		// lock the member out over a failed asset fetch, so let it through and
-		// leave the picture unverified for an admin to confirm.
-		return { ok: false, faces: 0, reason: 'unavailable' };
-	}
+  let faceapi;
+  try {
+    faceapi = await ready();
+  } catch {
+    // The detector could not load at all. Refusing the upload here would
+    // lock the member out over a failed asset fetch, so let it through and
+    // leave the picture unverified for an admin to confirm.
+    return { ok: false, faces: 0, reason: "unavailable" };
+  }
 
-	const url = URL.createObjectURL(file);
-	try {
-		const img = await loadImage(url);
-		// The detector sees a square of inputSize pixels, so on a tall phone
-		// photo (a 1980x3520 portrait is typical) a face can shrink below the
-		// point of being detectable. Measured on a real photo from this site:
-		// nothing at all at 416 or 608, found at 0.57 confidence at 800.
-		//
-		// So escalate rather than picking one size: a head-and-shoulders selfie
-		// hits on the first pass, and only a photo with no face pays for all
-		// three.
-		let found = [];
-		let usedSize = INPUT_SIZES[INPUT_SIZES.length - 1];
-		for (const inputSize of INPUT_SIZES) {
-			found = await faceapi.detectAllFaces(
-				img,
-				new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold: SCORE_THRESHOLD })
-			);
-			if (found.length) {
-				usedSize = inputSize;
-				break;
-			}
-		}
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImage(url);
+    // The detector sees a square of inputSize pixels, so on a tall phone
+    // photo (a 1980x3520 portrait is typical) a face can shrink below the
+    // point of being detectable. Measured on a real photo from this site:
+    // nothing at all at 416 or 608, found at 0.57 confidence at 800.
+    //
+    // So escalate rather than picking one size: a head-and-shoulders selfie
+    // hits on the first pass, and only a photo with no face pays for all
+    // three.
+    let found = [];
+    let usedSize = INPUT_SIZES[INPUT_SIZES.length - 1];
+    for (const inputSize of INPUT_SIZES) {
+      found = await faceapi.detectAllFaces(
+        img,
+        new faceapi.TinyFaceDetectorOptions({
+          inputSize,
+          scoreThreshold: SCORE_THRESHOLD,
+        })
+      );
+      if (found.length) {
+        usedSize = inputSize;
+        break;
+      }
+    }
 
-		if (found.length === 0) return { ok: false, faces: 0, reason: 'no-face' };
-		if (found.length > 1) return { ok: false, faces: found.length, reason: 'many-faces' };
+    if (found.length === 0) return { ok: false, faces: 0, reason: "no-face" };
+    if (found.length > 1)
+      return { ok: false, faces: found.length, reason: "many-faces" };
 
-		const box = found[0].box;
-		const frameWidth = img.naturalWidth || img.width || 0;
-		if (frameWidth && box.width / frameWidth < MIN_FACE_WIDTH) {
-			return { ok: false, faces: 1, reason: 'too-small' };
-		}
+    const box = found[0].box;
+    const frameWidth = img.naturalWidth || img.width || 0;
+    if (frameWidth && box.width / frameWidth < MIN_FACE_WIDTH) {
+      return { ok: false, faces: 1, reason: "too-small" };
+    }
 
-		// A detected face is not necessarily a usable one: the detector happily
-		// finds a head in profile, which is no good for recognising somebody.
-		const landmarks = await faceapi
-			.detectSingleFace(
-				img,
-				// Same inputSize that found the face above. Hardcoding 416 here
-				// made this return null for any photo that needed the cascade,
-				// which quietly disabled the check on exactly the big phone
-				// photos it is meant to catch.
-				new faceapi.TinyFaceDetectorOptions({ inputSize: usedSize, scoreThreshold: SCORE_THRESHOLD })
-			)
-			.withFaceLandmarks(true);
+    // A detected face is not necessarily a usable one: the detector happily
+    // finds a head in profile, which is no good for recognising somebody.
+    const landmarks = await faceapi
+      .detectSingleFace(
+        img,
+        // Same inputSize that found the face above. Hardcoding 416 here
+        // made this return null for any photo that needed the cascade,
+        // which quietly disabled the check on exactly the big phone
+        // photos it is meant to catch.
+        new faceapi.TinyFaceDetectorOptions({
+          inputSize: usedSize,
+          scoreThreshold: SCORE_THRESHOLD,
+        })
+      )
+      .withFaceLandmarks(true);
 
-		// No landmarks means the check could not run, not that the face is bad.
-		if (!landmarks?.landmarks) return { ok: true, faces: 1 };
+    // No landmarks means the check could not run, not that the face is bad.
+    if (!landmarks?.landmarks) return { ok: true, faces: 1 };
 
-		if (!facingCamera(landmarks)) {
-			return { ok: false, faces: 1, reason: 'not-facing' };
-		}
+    if (!facingCamera(landmarks)) {
+      return { ok: false, faces: 1, reason: "not-facing" };
+    }
 
-		return { ok: true, faces: 1 };
-	} catch {
-		return { ok: false, faces: 0, reason: 'unreadable' };
-	} finally {
-		URL.revokeObjectURL(url);
-	}
+    return { ok: true, faces: 1 };
+  } catch {
+    return { ok: false, faces: 0, reason: "unreadable" };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 /**
@@ -170,54 +187,56 @@ export async function detectFace(file) {
  * enough to separate "looking at the camera" from "looking away".
  */
 function facingCamera(detection) {
-	const lm = detection.landmarks;
-	const left = centre(lm.getLeftEye());
-	const right = centre(lm.getRightEye());
-	const nose = centre(lm.getNose());
-	if (!left || !right || !nose) return true;
+  const lm = detection.landmarks;
+  const left = centre(lm.getLeftEye());
+  const right = centre(lm.getRightEye());
+  const nose = centre(lm.getNose());
+  if (!left || !right || !nose) return true;
 
-	const eyeGap = Math.hypot(right.x - left.x, right.y - left.y);
-	if (!eyeGap) return true;
+  const eyeGap = Math.hypot(right.x - left.x, right.y - left.y);
+  if (!eyeGap) return true;
 
-	const midX = (left.x + right.x) / 2;
-	const offset = Math.abs(nose.x - midX) / eyeGap;
+  const midX = (left.x + right.x) / 2;
+  const offset = Math.abs(nose.x - midX) / eyeGap;
 
-	const boxWidth = detection.detection?.box?.width ?? 0;
-	const spread = boxWidth ? eyeGap / boxWidth : 1;
+  const boxWidth = detection.detection?.box?.width ?? 0;
+  const spread = boxWidth ? eyeGap / boxWidth : 1;
 
-	return offset <= MAX_NOSE_OFFSET && spread >= MIN_EYE_SPREAD;
+  return offset <= MAX_NOSE_OFFSET && spread >= MIN_EYE_SPREAD;
 }
 
 /** @param {{x: number, y: number}[]} points */
 function centre(points) {
-	if (!points?.length) return null;
-	let x = 0;
-	let y = 0;
-	for (const p of points) {
-		x += p.x;
-		y += p.y;
-	}
-	return { x: x / points.length, y: y / points.length };
+  if (!points?.length) return null;
+  let x = 0;
+  let y = 0;
+  for (const p of points) {
+    x += p.x;
+    y += p.y;
+  }
+  return { x: x / points.length, y: y / points.length };
 }
 
 function loadImage(src) {
-	return new Promise((resolve, reject) => {
-		const img = new Image();
-		img.onload = () => resolve(img);
-		img.onerror = reject;
-		img.src = src;
-	});
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
 /** Human-readable reason, for the form to show. */
 export const FACE_MESSAGES = {
-	'no-file': 'Choose a photo first.',
-	'no-face': 'No face found in that photo. Use a clear, well-lit photo of yourself.',
-	'many-faces': 'That photo has more than one person in it. Use a photo of just you.',
-	'too-small':
-		'Your face is too small in that photo. Fill the frame with your head and shoulders.',
-	'not-facing':
-		'Please look straight at the camera. That photo is too side-on to recognise you by.',
-	unreadable: 'That image could not be read. Try a different file.',
-	unavailable: 'The face check could not run. Your photo was saved for review.'
+  "no-file": "Choose a photo first.",
+  "no-face":
+    "No face found in that photo. Use a clear, well-lit photo of yourself.",
+  "many-faces":
+    "That photo has more than one person in it. Use a photo of just you.",
+  "too-small":
+    "Your face is too small in that photo. Fill the frame with your head and shoulders.",
+  "not-facing":
+    "Please look straight at the camera. That photo is too side-on to recognise you by.",
+  unreadable: "That image could not be read. Try a different file.",
+  unavailable: "The face check could not run. Your photo was saved for review.",
 };

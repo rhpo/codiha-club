@@ -11,3 +11,12 @@ build/
 # build the moment package.json gains a dependency. package-lock.json is the
 # one kept current, and netlify.toml runs npm.
 pnpm-lock.yaml
+
+# Vite writes these next to the config while resolving it; they are transient.
+vite.config.js.timestamp-*
+
+# Local Cloudflare dev secrets, mirrored from .env. Never committed.
+.dev.vars
+
+# Local wrangler/miniflare dev state (caches, KV, sqlite). Never committed.
+.wrangler/

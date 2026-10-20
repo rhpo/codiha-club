@@ -1,5 +1,9 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import QRCode from "qrcode";
+// Deliberately the pure-JS core rather than the package root. The root
+// re-exports qrcode/lib/server, which pulls in `fs` to write PNG files -
+// unavailable on Cloudflare's workerd runtime, where this function also runs.
+// The core only computes the module matrix, which is all a vector QR needs.
+import { create as createQr } from "qrcode/lib/core/qrcode.js";
 // A 256px base64 copy of the navbar mark. The full static/logo.png is
 // 2301x2281 and 785 KB, which would land in every generated PDF for a mark
 // drawn at 62pt. Regenerate with `npm run logo:mark`.
@@ -221,28 +225,38 @@ export async function buildCertificatePdf(
     color: rgb(0.7, 0.78, 0.72),
   });
 
-  // verification QR
-  const qrPng = await QRCode.toBuffer(verifyUrl, {
-    type: "png",
-    margin: 1,
-    width: 320,
-    color: { dark: "#1b2e1f", light: "#ffffff" },
-  });
-  const qr = await pdf.embedPng(qrPng);
+  // Verification QR, drawn as vector squares rather than an embedded bitmap:
+  // it stays sharp at any zoom or print size, and costs ~1 kB instead of ~4 kB.
   const qrSize = 104;
+  const qrX = W - 90 - qrSize;
+  const qrY = 54;
+  const quiet = 8;
   page.drawRectangle({
-    x: W - 90 - qrSize - 8,
-    y: 54 - 8,
-    width: qrSize + 16,
-    height: qrSize + 16,
+    x: qrX - quiet,
+    y: qrY - quiet,
+    width: qrSize + quiet * 2,
+    height: qrSize + quiet * 2,
     color: white,
   });
-  page.drawImage(qr, {
-    x: W - 90 - qrSize,
-    y: 54,
-    width: qrSize,
-    height: qrSize,
-  });
+
+  const matrix = createQr(verifyUrl, { errorCorrectionLevel: "M" }).modules;
+  const cell = qrSize / matrix.size;
+  const qrDark = rgb(0.105, 0.184, 0.125);
+  for (let row = 0; row < matrix.size; row++) {
+    for (let col = 0; col < matrix.size; col++) {
+      if (!matrix.get(row, col)) continue;
+      page.drawRectangle({
+        x: qrX + col * cell,
+        // Row 0 of the matrix is the top one; PDF y grows upwards.
+        y: qrY + (matrix.size - 1 - row) * cell,
+        // A hair of bleed, so neighbouring modules do not show seams in
+        // viewers that antialias each rectangle edge independently.
+        width: cell + 0.15,
+        height: cell + 0.15,
+        color: qrDark,
+      });
+    }
+  }
   const vLabel = "Scan to verify";
   page.drawText(vLabel, {
     x:
