@@ -12,6 +12,7 @@
   import Why from "$lib/pages/Why.svelte";
   import GetStarted from "$lib/pages/GetStarted.svelte";
   import LandingLeaderboard from "$lib/pages/LandingLeaderboard.svelte";
+  import MembersGrid from "$lib/pages/MembersGrid.svelte";
   import ScoreExplainer from "$lib/pages/ScoreExplainer.svelte";
   import EventCard from "$lib/components/EventCard.svelte";
   import HackathonCard from "$lib/components/HackathonCard.svelte";
@@ -37,6 +38,8 @@
       semester={data.semester}
       meId={data.profile?.id}
     />
+
+    <MembersGrid members={data.members} />
 
     <ScoreExplainer />
 

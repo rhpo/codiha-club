@@ -81,6 +81,12 @@ export function can(profile) {
 		manageUsers: rank >= RANK.admin,
 		manageSettings: rank >= RANK.admin,
 		sendCampaigns: rank >= RANK.admin,
+		/**
+		 * Have a club mailbox at all. Ordinary members do not: the club has a
+		 * limited daily send quota and a small inbound domain, so addresses are
+		 * for people acting on the club's behalf.
+		 */
+		useMailbox: rank >= RANK.staff,
 		/** Read a mailbox that is not your own. Admin deliberately cannot. */
 		readAnyMailbox: rank >= RANK.superadmin
 	};

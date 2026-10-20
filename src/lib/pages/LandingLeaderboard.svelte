@@ -8,11 +8,18 @@
 	export let rows = [];
 	export let semester = null;
 	export let meId = null;
+	/** Fewer than this and the board is hidden rather than shown half-empty. */
+	const MIN_RANKED = 3;
 
 	$: top3 = rows.slice(0, 3);
 	$: rest = rows.slice(3);
+
+	// A podium needs three people to mean anything, and a board of one reads as
+	// a mistake. Below that the section is not rendered at all.
+	$: enoughToRank = rows.length >= MIN_RANKED;
 </script>
 
+{#if enoughToRank}
 <section class="wrap" id="leaderboard">
 	<div class="section-head" data-aos="fade-right">
 		<div>
@@ -36,19 +43,16 @@
 		</p>
 	{/if}
 
-	{#if rows.length}
-		<div data-aos="zoom-in" class="full">
-			<Podium top={top3} />
+	<div data-aos="zoom-in" class="full">
+		<Podium top={top3} />
+	</div>
+	{#if rest.length}
+		<div data-aos="fade-up" class="full">
+			<LeaderboardList rows={rest} highlightId={meId} />
 		</div>
-		{#if rest.length}
-			<div data-aos="fade-up" class="full">
-				<LeaderboardList rows={rest} highlightId={meId} />
-			</div>
-		{/if}
-	{:else}
-		<p class="empty" data-aos="fade-up">The leaderboard opens with the first event check-in.</p>
 	{/if}
 </section>
+{/if}
 
 <style>
 	.wrap {

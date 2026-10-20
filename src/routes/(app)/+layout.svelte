@@ -67,6 +67,8 @@
   $: profile = $page.data?.profile ?? null;
   $: isApproved = profile?.status === "approved";
   $: isAdmin = isApproved && atLeast(profile?.role, "staff");
+  // Mailboxes are for people acting on the club's behalf, not every member.
+  $: canUseMail = isApproved && atLeast(profile?.role, "staff");
 
   // Secondary nav entries that depend on who is looking.
   $: accountLinks = profile
@@ -74,7 +76,7 @@
         isApproved
           ? { name: "Dashboard", icon: faGaugeHigh, link: "/dashboard" }
           : { name: "Membership", icon: faGaugeHigh, link: "/pending" },
-        ...(isApproved
+        ...(canUseMail
           ? [{ name: "Mail", icon: faEnvelope, link: "/mail" }]
           : []),
         ...(isAdmin

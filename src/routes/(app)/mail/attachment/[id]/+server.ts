@@ -1,5 +1,5 @@
 import { error, redirect, type RequestHandler } from '@sveltejs/kit';
-import { requireMember } from '$lib/server/guards';
+import { requireStaff } from '$lib/server/guards';
 import { supabaseAdmin } from '$lib/server/supabaseAdmin';
 import { materializeAttachment } from '$lib/server/mail';
 import { can } from '$lib/roles.js';
@@ -12,7 +12,7 @@ import { can } from '$lib/roles.js';
  * are served straight from there.
  */
 export const GET: RequestHandler = async (event) => {
-	const profile = await requireMember(event);
+	const profile = await requireStaff(event);
 	const admin = supabaseAdmin();
 
 	const { data: attachment } = await admin

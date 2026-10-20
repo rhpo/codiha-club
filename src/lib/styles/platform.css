@@ -654,3 +654,81 @@ table.data tr:hover td {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ---- tooltips (tippy.js) ------------------------------------------------
+   tippy.js ships a stylesheet, but nothing in this project ever imported it,
+   so every existing tooltip rendered as unstyled text on a transparent box.
+   Styling the markup directly is a few lines less than importing that sheet
+   and then overriding it, and it keeps tooltips on the admin palette. */
+
+/* Doubled class: tippy injects its own stylesheet at runtime, so it lands
+   after this file and wins at equal specificity. */
+.tippy-box.tippy-box {
+  background: var(--surface-strong);
+  border: 1px solid var(--glass-border-strong);
+  backdrop-filter: blur(10px);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  font-family: Inter, sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7);
+  outline: 0;
+}
+
+.tippy-box.tippy-box > .tippy-content {
+  padding: 0.45rem 0.7rem;
+}
+
+/* tippy positions the arrow and sets its direction with data-placement; this
+   only colours it. */
+.tippy-box.tippy-box > .tippy-arrow {
+  color: var(--surface-strong);
+  width: 16px;
+  height: 16px;
+}
+
+.tippy-box.tippy-box > .tippy-arrow::before {
+  content: '';
+  position: absolute;
+  border-color: transparent;
+  border-style: solid;
+}
+
+.tippy-box.tippy-box[data-placement^='top'] > .tippy-arrow {
+  bottom: 0;
+}
+.tippy-box.tippy-box[data-placement^='top'] > .tippy-arrow::before {
+  bottom: -7px;
+  left: 0;
+  border-width: 8px 8px 0;
+  border-top-color: currentColor;
+}
+
+.tippy-box.tippy-box[data-placement^='bottom'] > .tippy-arrow {
+  top: 0;
+}
+.tippy-box.tippy-box[data-placement^='bottom'] > .tippy-arrow::before {
+  top: -7px;
+  left: 0;
+  border-width: 0 8px 8px;
+  border-bottom-color: currentColor;
+}
+
+.tippy-box.tippy-box[data-placement^='left'] > .tippy-arrow {
+  right: 0;
+}
+.tippy-box.tippy-box[data-placement^='left'] > .tippy-arrow::before {
+  border-width: 8px 0 8px 8px;
+  border-left-color: currentColor;
+  right: -7px;
+}
+
+.tippy-box.tippy-box[data-placement^='right'] > .tippy-arrow {
+  left: 0;
+}
+.tippy-box.tippy-box[data-placement^='right'] > .tippy-arrow::before {
+  left: -7px;
+  border-width: 8px 8px 8px 0;
+  border-right-color: currentColor;
+}

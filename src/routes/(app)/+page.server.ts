@@ -5,7 +5,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const now = new Date().toISOString();
 	const sb = locals.supabase;
 
-	const [leaderboard, events, hackathons, semester] = await Promise.all([
+	const [leaderboard, events, hackathons, semester, directory] = await Promise.all([
 		safe(sb.from('leaderboard').select('*').order('rank', { ascending: true }).limit(10)),
 		safe(
 			sb
@@ -27,7 +27,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 				.order('starts_at', { ascending: true })
 				.limit(2)
 		),
-		safe(sb.rpc('semester_bounds').maybeSingle())
+		safe(sb.rpc('semester_bounds').maybeSingle()),
+		safe(
+			sb
+				.from('member_directory')
+				.select('id,full_name,avatar_url,points,is_board')
+				.order('points', { ascending: false })
+				.limit(200)
+		)
 	]);
 
 	// No CDN caching: the shared nav renders the signed-in member's name.
@@ -35,6 +42,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		leaderboard: leaderboard.data ?? [],
 		events: events.data ?? [],
 		hackathons: hackathons.data ?? [],
-		semester: semester.data ?? null
+		semester: semester.data ?? null,
+		members: directory.data ?? []
 	};
 };

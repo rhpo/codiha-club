@@ -1,5 +1,5 @@
 import { fail, type RequestEvent } from '@sveltejs/kit';
-import { requireMember } from '$lib/server/guards';
+import { requireStaff } from '$lib/server/guards';
 import { supabaseAdmin } from '$lib/server/supabaseAdmin';
 import { ensureAccount, quotaFor, sendFromMailbox, sendingAddressFor } from '$lib/server/mail';
 import { can } from '$lib/roles.js';
@@ -32,7 +32,8 @@ async function resolveAccount(
 }
 
 export const load: PageServerLoad = async (event) => {
-	const profile = await requireMember(event);
+	// Staff and above only; a plain member gets a 403 rather than an empty page.
+	const profile = await requireStaff(event);
 	const abilities = can(profile);
 	const { account, impersonating } = await resolveAccount(event, profile);
 
@@ -89,7 +90,7 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
 	send: async (event) => {
-		const profile = await requireMember(event);
+		const profile = await requireStaff(event);
 		const { account } = await resolveAccount(event, profile);
 		if (!account) return fail(400, { error: 'You do not have a mailbox yet.' });
 

@@ -1,5 +1,5 @@
 import { error, fail, redirect, type RequestEvent } from '@sveltejs/kit';
-import { requireMember } from '$lib/server/guards';
+import { requireStaff } from '$lib/server/guards';
 import { supabaseAdmin } from '$lib/server/supabaseAdmin';
 import { ensureAccount, sendFromMailbox, quotaFor } from '$lib/server/mail';
 import { can } from '$lib/roles.js';
@@ -33,7 +33,7 @@ async function authorizeThread(event: RequestEvent, profile: any) {
 }
 
 export const load: PageServerLoad = async (event) => {
-	const profile = await requireMember(event);
+	const profile = await requireStaff(event);
 	await ensureAccount(event.locals.supabase, profile);
 	const { thread, account, impersonating } = await authorizeThread(event, profile);
 
@@ -68,7 +68,7 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
 	reply: async (event) => {
-		const profile = await requireMember(event);
+		const profile = await requireStaff(event);
 		const { thread, account, impersonating } = await authorizeThread(event, profile);
 		if (impersonating) {
 			return fail(403, { error: 'You cannot send from somebody else’s mailbox.' });
@@ -113,7 +113,7 @@ export const actions: Actions = {
 	},
 
 	archive: async (event) => {
-		const profile = await requireMember(event);
+		const profile = await requireStaff(event);
 		const { thread, impersonating } = await authorizeThread(event, profile);
 		if (impersonating) return fail(403, { error: 'Read-only while viewing another mailbox.' });
 

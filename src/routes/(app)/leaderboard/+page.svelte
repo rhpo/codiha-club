@@ -8,6 +8,9 @@
 
 	$: me = data.profile ? data.rows.find((r) => r.id === data.profile.id) : null;
 
+	/** Matches MIN_RANKED in LandingLeaderboard: a podium needs three. */
+	const MIN_RANKED = 3;
+
 	const stats = (d, mine) => [
 		{ value: d.memberCount, label: 'Members' },
 		{ value: d.totalPoints, label: 'Points this year' },
@@ -48,7 +51,7 @@
 		</p>
 	{/if}
 
-	{#if data.rows.length}
+	{#if data.rows.length >= MIN_RANKED}
 		<div data-aos="zoom-in">
 			<Podium top={data.rows.slice(0, 3)} />
 		</div>
@@ -58,7 +61,9 @@
 			</div>
 		{/if}
 	{:else}
-		<p class="empty" data-aos="fade-up">No ranked members yet.</p>
+		<p class="empty" data-aos="fade-up">
+			The board opens once {MIN_RANKED} members have earned points. Check in to the next event.
+		</p>
 	{/if}
 
 	{#if !data.profile}

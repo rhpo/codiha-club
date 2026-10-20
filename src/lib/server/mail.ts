@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '$lib/server/supabaseAdmin';
 import { sendMail } from '$lib/server/brevo';
 import { normalizeSubject, replyHeaders, swapDomain } from '$lib/server/mail-core.js';
-import { quotaState } from '$lib/roles.js';
+import { can, quotaState } from '$lib/roles.js';
 
 /** Brevo caps a single message at 10 MB including every attachment. */
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -40,9 +40,21 @@ export function localPartFor(fullName: string, fallback: string): string {
 /** The signed-in member's mailbox, created on first use. */
 export async function ensureAccount(
 	sb: SupabaseClient,
-	member: { id: string; full_name: string; email: string | null }
+	member: { id: string; full_name: string; email: string | null; role?: string; status?: string }
 ): Promise<MailAccount | null> {
 	const admin = supabaseAdmin();
+
+	// Staff and above only. An existing mailbox is still returned below, so
+	// demoting somebody does not destroy their history; it just stops new
+	// addresses being handed out.
+	if (!can(member).useMailbox) {
+		const { data: kept } = await admin
+			.from('mail_accounts')
+			.select('id,address,label,member_id,daily_send_limit')
+			.eq('member_id', member.id)
+			.maybeSingle();
+		return (kept as MailAccount) ?? null;
+	}
 
 	const { data: existing } = await admin
 		.from('mail_accounts')
