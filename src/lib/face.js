@@ -37,6 +37,17 @@ const MAX_NOSE_OFFSET = 0.42;
  */
 const MIN_EYE_SPREAD = 0.2;
 
+/**
+ * Smallest the face may be, as a fraction of the image width.
+ *
+ * This is a framing rule, not a liveness check: a profile picture should be
+ * head-and-shoulders. It also happens to reject the common cheat of holding a
+ * book, phone or ID up to the camera, because the face inside the held object
+ * is small within the frame. Somebody determined can still fill the frame with
+ * a printed photo; nothing client-side can tell that apart from a person.
+ */
+const MIN_FACE_WIDTH = 0.2;
+
 let loader = null;
 let api = null;
 
@@ -116,6 +127,12 @@ export async function detectFace(file) {
 
 		if (found.length === 0) return { ok: false, faces: 0, reason: 'no-face' };
 		if (found.length > 1) return { ok: false, faces: found.length, reason: 'many-faces' };
+
+		const box = found[0].box;
+		const frameWidth = img.naturalWidth || img.width || 0;
+		if (frameWidth && box.width / frameWidth < MIN_FACE_WIDTH) {
+			return { ok: false, faces: 1, reason: 'too-small' };
+		}
 
 		// A detected face is not necessarily a usable one: the detector happily
 		// finds a head in profile, which is no good for recognising somebody.
@@ -197,6 +214,8 @@ export const FACE_MESSAGES = {
 	'no-file': 'Choose a photo first.',
 	'no-face': 'No face found in that photo. Use a clear, well-lit photo of yourself.',
 	'many-faces': 'That photo has more than one person in it. Use a photo of just you.',
+	'too-small':
+		'Your face is too small in that photo. Fill the frame with your head and shoulders.',
 	'not-facing':
 		'Please look straight at the camera. That photo is too side-on to recognise you by.',
 	unreadable: 'That image could not be read. Try a different file.',

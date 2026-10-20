@@ -113,10 +113,16 @@
 		const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.92));
 		if (!blob) return;
 
+		const shot = new File([blob], "camera.jpg", { type: "image/jpeg" });
 		closeCamera();
+
 		// Routed through FileDrop so the capture posts through the same input as
-		// a chosen file, and onPick runs the face check on it either way.
-		dropper?.setFiles([new File([blob], "camera.jpg", { type: "image/jpeg" })]);
+		// a chosen file, and gets the same size cap, downscale and face check.
+		if (!dropper) {
+			message = "Could not attach the photo. Try uploading a file instead.";
+			return;
+		}
+		dropper.setFiles([shot]);
 	}
 
 	onDestroy(() => {
@@ -180,7 +186,13 @@
 					</button>
 				</div>
 			</div>
-		{:else}
+		{/if}
+
+		<!-- Always mounted, only hidden. Putting this in an {:else} destroyed the
+		     component whenever the camera opened, so the reference used by
+		     capture() was null and the captured frame went nowhere. A hidden
+		     file input still submits with the form. -->
+		<div class="picker" class:away={cameraOpen}>
 			<FileDrop
 				bind:this={dropper}
 				name="avatar"
@@ -195,7 +207,7 @@
 			<button class="btn ghost block" type="button" on:click={openCamera}>
 				<Fa icon={faVideo} /> Use my camera instead
 			</button>
-		{/if}
+		</div>
 
 		{#if cameraError}
 			<div class="notice warn">{cameraError}</div>
@@ -291,6 +303,17 @@
 		background: var(--glass);
 		border: 1px solid var(--glass-border);
 		color: var(--muted);
+	}
+
+	.picker {
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+	}
+
+	/* Hidden, not unmounted: see the comment in the markup. */
+	.picker.away {
+		display: none;
 	}
 
 	.cam {
