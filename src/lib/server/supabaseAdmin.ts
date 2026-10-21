@@ -1,6 +1,10 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { env } from '$env/dynamic/private';
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+// Dynamic, not static. $env/static/public is inlined at BUILD time, so the
+// build fails outright on any platform whose build environment has no vars
+// set - which is what broke the first Cloudflare Pages deploy. Read at
+// runtime instead, where the platform supplies them.
+import { env as publicEnv } from "$env/dynamic/public";
+import { env } from "$env/dynamic/private";
 
 let cached: SupabaseClient | null = null;
 
@@ -10,11 +14,13 @@ let cached: SupabaseClient | null = null;
  * request carries a valid HMAC check-in token.
  */
 export function supabaseAdmin(): SupabaseClient {
-	if (cached) return cached;
-	const key = env.SUPABASE_SERVICE_ROLE_KEY;
-	if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
-	cached = createClient(PUBLIC_SUPABASE_URL, key, {
-		auth: { persistSession: false, autoRefreshToken: false }
-	});
-	return cached;
+  if (cached) return cached;
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+  const url = publicEnv.PUBLIC_SUPABASE_URL;
+  if (!url) throw new Error("PUBLIC_SUPABASE_URL is not set");
+  cached = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return cached;
 }
