@@ -104,18 +104,33 @@ export async function buildCertificatePdf(
   // rather than on the page body.
   const logo = await pdf.embedPng(LOGO_BYTES);
   const logoSize = 62;
+
+  const TITLE_SIZE = 30;
+  const TITLE_BASELINE = H - 72;
+  const SUB_SIZE = 10;
+  const SUB_BASELINE = H - 96;
+
+  // Centred on the wordmark beside it, not on the band. The band has more
+  // clearance above the text than below, so centring on the band leaves the
+  // mark sitting visibly high. Helvetica-Bold caps reach ~0.72 em above the
+  // baseline and Helvetica descenders fall ~0.21 em below it, which is enough
+  // to find the middle of the two lines of type.
+  const wordmarkTop = TITLE_BASELINE + TITLE_SIZE * 0.72;
+  const wordmarkBottom = SUB_BASELINE - SUB_SIZE * 0.21;
+  const wordmarkMidY = (wordmarkTop + wordmarkBottom) / 2;
+
   page.drawImage(logo, {
     x: 58,
-    y: H - 60 - logoSize / 2,
+    y: wordmarkMidY - logoSize / 2,
     width: logoSize,
     height: logoSize,
   });
 
-  center("CODIHA CLUB", H - 72, 30, bold, white);
+  center("CODIHA CLUB", TITLE_BASELINE, TITLE_SIZE, bold, white);
   center(
     "Inter-university IT Club  ·  ESST Algiers",
-    H - 96,
-    10,
+    SUB_BASELINE,
+    SUB_SIZE,
     regular,
     rgb(0.85, 0.9, 0.87)
   );
