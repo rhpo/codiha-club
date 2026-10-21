@@ -45,6 +45,37 @@ export function roleLabel(role) {
 }
 
 /**
+ * The same roles written out for a certificate.
+ *
+ * Deliberately separate from ROLE_LABELS: a table cell or a <select> wants
+ * "Staff", but a document somebody puts in front of a recruiter should read
+ * "Staff Member". These are the only role names that leave the product, so
+ * they are the ones worth writing properly.
+ *
+ * superadmin stays deliberately dull. It is never offered, never explained,
+ * and "Platform Developer" says nothing about what the rank can do.
+ */
+export const CERTIFICATE_ROLE_TITLES = {
+  superadmin: "Platform Developer",
+  admin: "President",
+  project_manager: "Project Manager",
+  staff: "Staff Member",
+  member: "Club Member",
+};
+
+/**
+ * @param {string | null | undefined} role
+ * @returns {string}
+ */
+export function certificateRoleTitle(role) {
+  return (
+    CERTIFICATE_ROLE_TITLES[
+      /** @type {keyof typeof CERTIFICATE_ROLE_TITLES} */ (role)
+    ] ?? "Club Member"
+  );
+}
+
+/**
  * Shown in the roles legend. Developer is deliberately absent: only a Developer
  * can see or assign it, and its extra capabilities are not advertised to the
  * rest of the board. Anything without an entry here is simply not described.

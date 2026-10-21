@@ -41,14 +41,15 @@
 		"@sveltejs/adapter-netlify": "^2.0.8",
 		"@vladmandic/face-api": "^1.7.15",
 		"aos": "^2.3.4",
+		"jspdf": "^2.5.2",
 		"marked": "^16.3.0",
-		"pdf-lib": "^1.17.1",
 		"qrcode": "^1.5.4",
 		"svelte-fa": "^3.0.4",
 		"svelte-highlight": "^7.7.0",
 		"svelte-preprocess": "^5.1.0",
 		"svelte-preprocess-import-assets": "^1.0.1",
 		"sveltejs-tippy": "^3.0.0",
+		"svg2pdf.js": "^2.2.4",
 		"vanilla-tilt-svelte": "^1.0.4"
 	}
 }

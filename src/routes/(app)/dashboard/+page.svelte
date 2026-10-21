@@ -267,7 +267,7 @@
 
         {#if m.certificateId}
           <div class="btn-row">
-            <a class="btn sm" href="/certificates/{m.certificateId}/download">
+            <a class="btn sm" href="/certificates/{m.certificateId}">
               <Fa icon={faDownload} /> Download PDF
             </a>
             <a class="btn sm ghost" href="/verify/{m.certificateId}"
@@ -319,7 +319,7 @@
               >Issued {formatDate(c.issued_at)} · {c.code}</span
             >
             <div class="btn-row">
-              <a class="btn sm" href="/certificates/{c.id}/download">
+              <a class="btn sm" href="/certificates/{c.id}">
                 <Fa icon={faDownload} /> PDF
               </a>
               <a class="btn sm ghost" href="/verify/{c.id}">Verify page</a>
