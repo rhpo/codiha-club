@@ -3,6 +3,8 @@
  * conversion breaks. Run with: npm test
  */
 import assert from "node:assert/strict";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { issue, verify, isWindowOpen } from "../src/lib/server/checkin-core.js";
 import { localToUtcIso, tzOffsetFrom } from "../src/lib/server/datetime.js";
 import {
@@ -639,6 +641,31 @@ assert.equal(
   profileComplete({ ...full, onboarded_at: null }),
   false,
   "unsubmitted form is incomplete"
+);
+
+// --- deployable asset sizes -------------------------------------------------
+
+// Cloudflare Pages refuses to upload any single file over 25 MiB, and it does
+// so at the UPLOAD step, long after the build has reported success. A 25.3 MiB
+// video got all the way to a failed deploy that way.
+const PAGES_MAX_ASSET_BYTES = 25 * 1024 * 1024;
+
+const oversized = [];
+for (const entry of readdirSync("static", {
+  recursive: true,
+  withFileTypes: true,
+})) {
+  if (!entry.isFile()) continue;
+  const full = join(entry.parentPath ?? entry.path, entry.name);
+  const { size } = statSync(full);
+  if (size > PAGES_MAX_ASSET_BYTES) {
+    oversized.push(`${full} is ${(size / 1048576).toFixed(1)} MiB`);
+  }
+}
+assert.deepEqual(
+  oversized,
+  [],
+  "static/ files must stay under 25 MiB or Cloudflare Pages rejects the deploy"
 );
 
 console.log("selfcheck: all assertions passed");

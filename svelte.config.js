@@ -13,9 +13,10 @@ import { importAssets } from "svelte-preprocess-import-assets";
  * than using adapter-auto keeps the adapter versions pinned in package.json
  * and avoids a network install partway through the build.
  *
- * Both run on serverless functions rather than the edge: the platform needs
- * node:crypto for the HMAC check-in tokens and pdf-lib for certificates.
- * On Cloudflare that requires the nodejs_compat flag - see wrangler.toml.
+ * Both run on serverless functions rather than the edge, because certificates
+ * are rendered with pdf-lib on the server. Cloudflare additionally needs the
+ * nodejs_compat flag for Buffer - see wrangler.toml. Check-in tokens use Web
+ * Crypto rather than node:crypto so they work on both runtimes unchanged.
  */
 const adapter = process.env.CF_PAGES ? cloudflare : netlify;
 
