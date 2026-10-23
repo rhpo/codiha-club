@@ -1,8 +1,9 @@
 # Cloudflare Pages configuration.
 #
-# `name` MUST match the Pages project name in the Cloudflare dashboard. If the
-# project is called something else, change it here or the build will not bind.
-name = "codihaclub"
+# `name` MUST match the Pages project name in the Cloudflare dashboard exactly.
+# When it does not, Cloudflare ignores this whole file and the Worker is never
+# bound: the build succeeds, static assets serve, and every dynamic route 404s.
+name = "codiha-club"
 
 # Fixes the "Output directory '.svelte-kit/cloudflare' not found" failure:
 # adapter-cloudflare writes here, so Pages is told to look here. The dashboard
