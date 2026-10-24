@@ -1,7 +1,7 @@
 <script>
 	// @ts-nocheck
 	import Fa from 'svelte-fa';
-	import { faPenToSquare, faImages } from '@fortawesome/free-solid-svg-icons';
+	import { faPenToSquare, faPlus, faXmark, faImages } from '@fortawesome/free-solid-svg-icons';
 	import PostCard from '$lib/components/PostCard.svelte';
 	import FileDrop from '$lib/components/FileDrop.svelte';
 	import { downscaleImage } from '$lib/image.js';
@@ -12,6 +12,12 @@
 
 	let body = '';
 	let picked = 0;
+
+	/* The composer is a big form for something most visits do not do: read the
+	   feed. Kept shut until asked for, and reopened if a submit came back with
+	   an error so the message is not pointing at a form nobody can see. */
+	let composing = false;
+	$: if (form?.error) composing = true;
 
 	$: tooMany = picked > data.imageLimit;
 
@@ -39,6 +45,11 @@
 	{#if form?.success}<div class="notice ok">{form.success}</div>{/if}
 
 	{#if data.canPost}
+		{#if !composing}
+			<button class="btn block new-post" type="button" on:click={() => (composing = true)}>
+				<Fa icon={faPlus} /> Add new post
+			</button>
+		{:else}
 		<form class="panel composer" method="POST" action="?/create" enctype="multipart/form-data">
 			<label class="field">
 				<span><Fa icon={faPenToSquare} /> Say something</span>
@@ -69,10 +80,14 @@
 				</p>
 			{/if}
 
-			<button class="btn block" type="submit" disabled={!body.trim() || tooMany}>
-				Post it
-			</button>
+			<div class="composer-acts">
+				<button class="btn ghost sm" type="button" on:click={() => (composing = false)}>
+					<Fa icon={faXmark} /> Cancel
+				</button>
+				<button class="btn" type="submit" disabled={!body.trim() || tooMany}>Post it</button>
+			</div>
 		</form>
+		{/if}
 	{:else}
 		<div class="notice warn">
 			<strong>Add a photo of yourself first.</strong>
@@ -97,6 +112,16 @@
 </div>
 
 <style>
+	.new-post {
+		margin-bottom: 1.2rem;
+	}
+
+	.composer-acts {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.5rem;
+	}
+
 	.composer {
 		display: flex;
 		flex-direction: column;

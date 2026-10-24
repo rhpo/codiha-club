@@ -35,6 +35,7 @@
 	$: total = totalReactions(post.reactions);
 
 	let picking = false;
+	let reactError = '';
 
 	const react = (key) => {
 		if (mine === key) {
@@ -48,7 +49,23 @@
 			mine = key;
 		}
 		counts = counts;
-		picking = false;
+	};
+
+	/**
+	 * The picker closes when the server answers, not on click. Closing it in
+	 * the click handler tore the <form> out of the DOM in the same tick the
+	 * browser was trying to submit it, and a failure had nowhere to show.
+	 */
+	const onReact = () => {
+		reactError = '';
+		return async ({ result, update }) => {
+			if (result.type === 'failure') {
+				reactError = result.data?.error ?? 'That did not save.';
+			} else {
+				picking = false;
+			}
+			await update({ reset: false });
+		};
 	};
 </script>
 
@@ -108,7 +125,7 @@
 			{#if picking}
 				<div class="picker">
 					{#each REACTIONS as r}
-						<form method="POST" action="?/react" use:enhance>
+						<form method="POST" action="?/react" use:enhance={onReact}>
 							<input type="hidden" name="post_id" value={post.id} />
 							<input type="hidden" name="emoji" value={r.key} />
 							<button
@@ -125,6 +142,8 @@
 					{/each}
 				</div>
 			{/if}
+
+			{#if reactError}<span class="tiny bad-text">{reactError}</span>{/if}
 		</div>
 
 		<a class="act" href="/posts/{post.id}">
@@ -241,12 +260,13 @@
 		margin-left: -0.28rem;
 	}
 
+	/* Inline, not a floating popover: absolutely positioned it could be
+	   clipped or painted under the next card, which looks exactly like a
+	   button that does nothing. */
 	.picker {
-		position: absolute;
-		bottom: calc(100% + 0.35rem);
-		left: 0;
-		z-index: 5;
 		display: flex;
+		flex-wrap: wrap;
+		margin-top: 0.35rem;
 		gap: 0.15rem;
 		padding: 0.3rem;
 		border-radius: 999px;
@@ -273,6 +293,12 @@
 
 	.pick.on {
 		background: var(--accent-soft);
+	}
+
+	.bad-text {
+		color: #fca5a5;
+		display: block;
+		margin-top: 0.3rem;
 	}
 
 	.pick .n {
