@@ -9,6 +9,18 @@
 
   const v = (key) => form?.values?.[key] ?? data.profile?.[key] ?? "";
   $: editing = !!data.profile?.onboarded_at;
+
+  /* "Other" is a way to type a university, not a university. The select posts
+     this marker and the server reads the text box instead, so nobody ends up
+     stored as literally "Other". */
+  const OTHER = "__other";
+  $: savedUniversity = v("university");
+  $: listed = UNIVERSITIES.includes(savedUniversity);
+  /* Anything not on the list - including a custom one saved earlier - reopens
+     the text box with that value still in it. */
+  let university = null;
+  $: university ??= savedUniversity ? (listed ? savedUniversity : OTHER) : "";
+  $: customUniversity = listed ? "" : savedUniversity;
 </script>
 
 <svelte:head><title>Complete your CODIHA profile</title></svelte:head>
@@ -53,13 +65,27 @@
     <div class="form-row two">
       <label class="field">
         <span>University *</span>
-        <select name="university" required>
-          <option value="" disabled selected={!v("university")}>Select…</option>
+        <select name="university" bind:value={university} required>
+          <option value="" disabled>Select…</option>
           {#each UNIVERSITIES as u}
-            <option value={u} selected={v("university") === u}>{u}</option>
+            <option value={u}>{u}</option>
           {/each}
+          <option value={OTHER}>Other — let me type it</option>
         </select>
       </label>
+
+      {#if university === OTHER}
+        <label class="field">
+          <span>Which university? *</span>
+          <input
+            name="university_other"
+            value={customUniversity}
+            placeholder="Type your university"
+            maxlength="80"
+            required
+          />
+        </label>
+      {/if}
 
       <label class="field">
         <span>Field of study *</span>

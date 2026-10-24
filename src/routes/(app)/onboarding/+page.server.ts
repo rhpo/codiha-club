@@ -60,7 +60,13 @@ export const actions: Actions = {
     const str = (k: string) => String(form.get(k) ?? "").trim();
 
     const full_name = str("full_name");
-    const university = str("university");
+    // "Other" is a prompt to type one, not a university. The select posts the
+    // marker and the real name arrives in university_other, so the column
+    // never stores the word "Other".
+    const university =
+      str("university") === "__other"
+        ? str("university_other").slice(0, 80)
+        : str("university");
     const field = str("field");
     const year = str("year");
 
@@ -80,6 +86,13 @@ export const actions: Actions = {
       return fail(400, { error: "Please enter your full name.", values });
     if (!university)
       return fail(400, { error: "Please pick your university.", values });
+    // Catches "Other" chosen with the text box left blank or filled with a
+    // single character, which the browser's `required` alone would allow.
+    if (university.length < 2)
+      return fail(400, {
+        error: "Please type the name of your university.",
+        values,
+      });
     if (!field)
       return fail(400, { error: "Please pick your field of study.", values });
     if (!year)
