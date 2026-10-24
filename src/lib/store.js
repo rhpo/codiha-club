@@ -14,8 +14,20 @@ export const menuOpen = writable(false);
  */
 export const busyCount = writable(0);
 
+/**
+ * The loading screen covers the page, so a counter that never comes back down
+ * locks the member out of the site with no way to recover but a reload. Every
+ * route that raises it is supposed to lower it again, but a navigation that
+ * never happens, a request that never settles or a thrown handler all skip
+ * that. The screen gives up by itself rather than trusting them.
+ */
+const BUSY_TIMEOUT_MS = 20000;
+let watchdog;
+
 export function startBusy() {
   busyCount.update((n) => n + 1);
+  clearTimeout(watchdog);
+  watchdog = setTimeout(resetBusy, BUSY_TIMEOUT_MS);
 }
 
 export function endBusy() {
@@ -23,6 +35,7 @@ export function endBusy() {
 }
 
 export function resetBusy() {
+  clearTimeout(watchdog);
   busyCount.set(0);
 }
 

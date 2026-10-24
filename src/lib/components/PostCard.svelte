@@ -61,6 +61,8 @@
 		return async ({ result, update }) => {
 			if (result.type === 'failure') {
 				reactError = result.data?.error ?? 'That did not save.';
+			} else if (result.type === 'error') {
+				reactError = 'Could not reach the server.';
 			} else {
 				picking = false;
 			}
