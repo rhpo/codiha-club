@@ -15,6 +15,7 @@
     faLaptopCode,
     faHourglassHalf,
     faAward,
+    faCamera,
   } from "@fortawesome/free-solid-svg-icons";
   import Avatar from "$lib/components/Avatar.svelte";
   import {
@@ -59,7 +60,7 @@
   {#if !p.avatar_url}
     <!-- Nudge, not a block: a member with no picture can still use everything.
 		     It simply stops appearing once they have one. -->
-    <a class="notice warn pfp-nudge" href="/onboarding?edit=1">
+    <a class="notice warn pfp-nudge" href="/photo?change=1&next=/dashboard">
       <Avatar src={null} name={p.full_name} size={40} />
       <span>
         <strong>Add a profile picture.</strong>
@@ -83,6 +84,11 @@
     <div class="hero-actions">
       <a class="btn ghost sm" href="/onboarding?edit=1"
         ><Fa icon={faUserPen} /> Edit profile</a
+      >
+      <!-- Through the face step, never a plain file picker: a profile picture
+           has to stay a picture of the member. -->
+      <a class="btn ghost sm" href="/photo?change=1&next=/dashboard"
+        ><Fa icon={faCamera} /> Change photo</a
       >
       <form method="POST" action="/logout">
         <button class="btn ghost sm" type="submit">Sign out</button>

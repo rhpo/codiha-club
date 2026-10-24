@@ -24,6 +24,7 @@ import {
   atLeast,
   can,
   canAssignTo,
+  needsFacePhoto,
   quotaState,
   rankOf,
 } from "../src/lib/roles.js";
@@ -667,5 +668,59 @@ assert.deepEqual(
   [],
   "static/ files must stay under 25 MiB or Cloudflare Pages rejects the deploy"
 );
+
+// --- face photo requirement ------------------------------------------------
+
+// The photo is the second half of signing up, so somebody still waiting on
+// review has already been asked for it. Gating this on status === 'approved'
+// meant a new member never saw the step until an admin let them in.
+assert.equal(
+  needsFacePhoto({
+    role: "member",
+    status: "pending",
+    avatar_face_verified: false,
+  }),
+  true,
+  "a pending member is still asked for a face photo"
+);
+assert.equal(
+  needsFacePhoto({
+    role: "member",
+    status: "approved",
+    avatar_face_verified: false,
+  }),
+  true,
+  "an approved member without a verified photo is asked"
+);
+assert.equal(
+  needsFacePhoto({
+    role: "member",
+    status: "approved",
+    avatar_face_verified: true,
+  }),
+  false,
+  "a verified photo is not asked for twice"
+);
+assert.equal(
+  needsFacePhoto({
+    role: "admin",
+    status: "approved",
+    avatar_face_verified: false,
+  }),
+  true,
+  "every role is asked, not just members"
+);
+// The Developer is the one who has to be able to get in and fix the face
+// check when the face check itself is what is broken.
+assert.equal(
+  needsFacePhoto({
+    role: "superadmin",
+    status: "approved",
+    avatar_face_verified: false,
+  }),
+  false,
+  "the Developer rank is exempt"
+);
+assert.equal(needsFacePhoto(null), false, "no profile, nothing to ask for");
 
 console.log("selfcheck: all assertions passed");

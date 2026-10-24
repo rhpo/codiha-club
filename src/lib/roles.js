@@ -200,7 +200,8 @@ export function quotaState(quota) {
  */
 export function needsFacePhoto(profile) {
   if (!profile) return false;
-  if (profile.status !== "approved") return false;
+  // Deliberately not gated on status: the photo is the second half of signing
+  // up, so a member who is still pending review has already been asked for it.
   if (rankOf(profile.role) >= RANK.superadmin) return false;
   return !profile.avatar_face_verified;
 }
