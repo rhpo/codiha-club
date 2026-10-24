@@ -2,6 +2,7 @@
   // @ts-nocheck
   import {
     faCalendarDays,
+    faComments,
     faGaugeHigh,
     faHome,
     faImages,
@@ -51,6 +52,7 @@
   const links = [
     { name: "Home", icon: faHome, link: "/" },
     { name: "Workshops", icon: faCalendarDays, link: "/events" },
+    { name: "Feed", icon: faComments, link: "/posts" },
     { name: "Hackathons", icon: faLaptopCode, link: "/hackathons" },
     { name: "Leaderboard", icon: faRankingStar, link: "/leaderboard" },
     { name: "Gallery", icon: faImages, link: "/articles/gallery" },
@@ -94,11 +96,11 @@
     window.addEventListener("scroll", () => {
       document.documentElement.style.setProperty(
         "--rotation-degrees",
-        `${window.scrollY / 2}deg`,
+        `${window.scrollY / 2}deg`
       );
       document.documentElement.style.setProperty(
         "--rotation-color",
-        `hsl(${window.scrollY / 2 + 180}, 100%, 70%)`,
+        `hsl(${window.scrollY / 2 + 180}, 100%, 70%)`
       );
     });
   });
@@ -171,7 +173,10 @@
 
     <div class="links">
       {#each links as link}
-        <a href={link.link} class:active={isActive($page.url.pathname, link.link)}>
+        <a
+          href={link.link}
+          class:active={isActive($page.url.pathname, link.link)}
+        >
           <Fa icon={link.icon} />
           {link.name}
         </a>
@@ -186,7 +191,9 @@
           title={profile.full_name}
         >
           <Avatar src={profile.avatar_url} name={profile.full_name} size={32} />
-          <span class="me-name">{(profile.full_name || "Member").split(" ")[0]}</span>
+          <span class="me-name"
+            >{(profile.full_name || "Member").split(" ")[0]}</span
+          >
           {#if !isApproved}<span class="pill warn tiny">Pending</span>{/if}
         </a>
         {#if isAdmin}
@@ -524,7 +531,6 @@
     --nav: var(--nav-body);
     --space: 3rem;
   }
-
 
   nav {
     padding: 0 var(--space);

@@ -226,6 +226,39 @@ export function notifyWinner(
 }
 
 /**
+ * Somebody commented on your post.
+ *
+ * Callers skip this when the commenter is the post's author, so replying to
+ * your own thread does not mail you.
+ */
+export function notifyPostComment(
+  target: NotifyTarget,
+  from: { full_name?: string | null },
+  comment: string,
+  postId: string,
+  ctx: Ctx
+) {
+  const who = String(from.full_name ?? "Someone").trim() || "Someone";
+  // Long comments are trimmed: the email is a nudge to come and read it,
+  // not a copy of the thread.
+  const excerpt = comment.length > 280 ? `${comment.slice(0, 277)}…` : comment;
+
+  return blast(
+    [target],
+    `${who} commented on your post`,
+    (t) =>
+      `<p>Hi ${firstName(t.full_name)},</p>
+			 <p><strong>${escapeHtml(who)}</strong> left a comment on your post:</p>
+			 <p style="padding:12px 16px;border-left:3px solid #999;background:rgba(0,0,0,0.04);">
+			   ${escapeHtml(excerpt)}
+			 </p>
+			 ${button("Read and reply", `${ctx.origin}/posts/${postId}`, ctx.theme)}
+			 <p>The CODIHA Club board</p>`,
+    ctx
+  );
+}
+
+/**
  * Anything an admin typed goes through here before it reaches a mail client.
  * A rejection reason or an event title with a stray `<` must not be able to
  * change the shape of the message.
