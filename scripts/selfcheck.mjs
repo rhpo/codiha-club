@@ -16,6 +16,7 @@ import {
   parseReferences,
   replyHeaders,
   swapDomain,
+  buildBrevoBody,
 } from "../src/lib/server/mail-core.js";
 import { secretMatches } from "../src/lib/server/webhook-auth.js";
 import { missingProfileFields, profileComplete } from "../src/lib/profile.js";
@@ -810,5 +811,92 @@ assert.deepEqual(
 assert.equal(humanDuration(2 * day + 4 * 3600000), "2 days and 4 hours");
 assert.equal(humanDuration(45 * 60000), "45 minutes");
 assert.equal(humanDuration(-5), "moments", "a past deadline reads as moments");
+
+// --- outbound mail batching -------------------------------------------------
+
+const SENDER = { email: "club@example.com", name: "CODIHA" };
+const base = {
+  subject: "Default subject",
+  html: "<p>default</p>",
+  sender: SENDER,
+  replyTo: "club@example.com",
+};
+
+// One plain recipient needs no versions at all.
+const single = buildBrevoBody({
+  ...base,
+  group: [{ email: "a@example.com", name: "A" }],
+});
+assert.equal(
+  single.messageVersions,
+  undefined,
+  "a single plain recipient needs no versions"
+);
+assert.equal(single.htmlContent, "<p>default</p>", "it uses the shared body");
+assert.deepEqual(single.to, [{ email: "a@example.com", name: "A" }]);
+
+// The point of the exercise: three personalised mails, one request.
+const batch = buildBrevoBody({
+  ...base,
+  group: [
+    { email: "a@example.com", name: "A", html: "<p>Hi A</p>" },
+    { email: "b@example.com", name: "B", html: "<p>Hi B</p>" },
+    { email: "c@example.com", name: "C", html: "<p>Hi C</p>" },
+  ],
+});
+assert.equal(batch.messageVersions.length, 3, "one version per recipient");
+assert.deepEqual(
+  batch.messageVersions.map((v) => v.htmlContent),
+  ["<p>Hi A</p>", "<p>Hi B</p>", "<p>Hi C</p>"],
+  "each recipient keeps their own body"
+);
+// The top level is the fallback for any version that omits one, so it has
+// to be the first recipient's copy rather than the shared default.
+assert.equal(
+  batch.htmlContent,
+  "<p>Hi A</p>",
+  "the top-level body is the first recipient's, not the default"
+);
+
+// Recipients must never see each other: every version addresses one person.
+assert.ok(
+  batch.messageVersions.every((v) => v.to.length === 1),
+  "no version addresses more than one recipient"
+);
+
+// A lone recipient with their own body still needs a version, because the
+// subject override lives there.
+const lonePersonal = buildBrevoBody({
+  ...base,
+  group: [{ email: "a@example.com", subject: "Just for you" }],
+});
+assert.equal(
+  lonePersonal.messageVersions.length,
+  1,
+  "a personalised single still gets a version"
+);
+assert.equal(
+  lonePersonal.subject,
+  "Just for you",
+  "its subject wins at the top level"
+);
+
+// Threading headers and attachments survive the move into the builder.
+const withExtras = buildBrevoBody({
+  ...base,
+  group: [{ email: "a@example.com" }],
+  headers: { "In-Reply-To": "<x@y>" },
+  attachments: [{ name: "cert.pdf", content: "Zm9v" }],
+});
+assert.deepEqual(
+  withExtras.headers,
+  { "In-Reply-To": "<x@y>" },
+  "reply headers are kept"
+);
+assert.deepEqual(
+  withExtras.attachment,
+  [{ name: "cert.pdf", content: "Zm9v" }],
+  "attachments are kept"
+);
 
 console.log("selfcheck: all assertions passed");

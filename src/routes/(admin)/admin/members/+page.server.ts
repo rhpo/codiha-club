@@ -14,10 +14,13 @@ import {
 import { loadApplicationWindow } from "$lib/server/settings";
 import { windowState } from "$lib/applications.js";
 import type { Role } from "$lib/types";
-import { sendMail, wrapHtml } from "$lib/server/brevo";
 import { loadTheme } from "$lib/server/settings";
 import { supabaseAdmin } from "$lib/server/supabaseAdmin";
-import { derive, type Theme } from "$lib/theme";
+import {
+  notifyApproved,
+  notifyRejected,
+  notifyRoleChanged,
+} from "$lib/server/notify";
 import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async (event) => {
@@ -94,35 +97,6 @@ export const load: PageServerLoad = async (event) => {
   };
 };
 
-async function notifyApproval(
-  email: string | null,
-  name: string,
-  origin: string,
-  theme: Theme
-) {
-  if (!email) return;
-  const { accent, onAccent } = derive(theme);
-  await sendMail({
-    recipients: [{ email, name }],
-    subject: "Welcome to CODIHA Club, your membership is approved 🎉",
-    html: wrapHtml(
-      `<p>Hi ${name.split(" ")[0] || "there"},</p>
-			 <p>Your CODIHA Club membership has been <strong>approved</strong>. Your member dashboard is live:
-			 points, event registrations, hackathon applications and certificates are all unlocked.</p>
-			 <p style="margin:24px 0;">
-			   <a href="${origin}/dashboard"
-			      style="background:${accent};color:${onAccent};padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700;">
-			      Open my dashboard</a>
-			 </p>
-			 <p>See you at the next event!<br/>The CODIHA Club board</p>`,
-      origin,
-      theme
-    ),
-  }).catch(() => {
-    /* approval must not fail because the mail provider is down */
-  });
-}
-
 export const actions: Actions = {
   approve: async (event) => {
     const admin = await requireStaff(event);
@@ -143,12 +117,12 @@ export const actions: Actions = {
       .maybeSingle();
 
     if (error) return fail(400, { error: error.message });
-    await notifyApproval(
-      data?.email ?? null,
-      data?.full_name ?? "",
-      event.url.origin,
-      await loadTheme(event.locals.supabase)
-    );
+    if (data) {
+      await notifyApproved([data], {
+        origin: event.url.origin,
+        theme: await loadTheme(event.locals.supabase),
+      });
+    }
     return { success: `${data?.full_name || "Member"} approved.` };
   },
 
@@ -171,12 +145,12 @@ export const actions: Actions = {
 
     if (error) return fail(400, { error: error.message });
 
-    const theme = await loadTheme(event.locals.supabase);
-    await Promise.all(
-      (data ?? []).map((m) =>
-        notifyApproval(m.email, m.full_name ?? "", event.url.origin, theme)
-      )
-    );
+    // One request for the whole batch rather than one per member: these
+    // run inside a serverless function with a short budget.
+    await notifyApproved(data ?? [], {
+      origin: event.url.origin,
+      theme: await loadTheme(event.locals.supabase),
+    });
     return { success: `${data?.length ?? 0} members approved.` };
   },
 
@@ -237,12 +211,22 @@ export const actions: Actions = {
     if (!id) return fail(400, { error: "Missing member id" });
     if (!reason) return fail(400, { error: "A rejection reason is required." });
 
-    const { error } = await event.locals.supabase
+    const { data, error } = await event.locals.supabase
       .from("profiles")
       .update({ status: "rejected", reject_reason: reason })
-      .eq("id", id);
+      .eq("id", id)
+      .select("email,full_name")
+      .maybeSingle();
 
     if (error) return fail(400, { error: error.message });
+    // Being turned down with no word at all is the part people complain
+    // about, and the board has already typed the reason.
+    if (data) {
+      await notifyRejected([data], reason, {
+        origin: event.url.origin,
+        theme: await loadTheme(event.locals.supabase),
+      });
+    }
     return { success: "Member rejected." };
   },
 
@@ -340,11 +324,21 @@ export const actions: Actions = {
       return fail(403, { error: "That member outranks you." });
     }
 
-    const { error } = await event.locals.supabase
+    const { data: updated, error } = await event.locals.supabase
       .from("profiles")
       .update({ role })
-      .eq("id", id);
+      .eq("id", id)
+      .select("email,full_name")
+      .maybeSingle();
     if (error) return fail(400, { error: error.message });
+    // Only when the role actually moved, so re-saving the same role does
+    // not mail somebody their own job title again.
+    if (updated && target.role !== role) {
+      await notifyRoleChanged([updated], role, {
+        origin: event.url.origin,
+        theme: await loadTheme(event.locals.supabase),
+      });
+    }
     return {
       success: `${target.full_name || "Member"} is now ${
         ROLE_LABELS[role as Role]
