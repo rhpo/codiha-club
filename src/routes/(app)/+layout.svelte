@@ -234,7 +234,7 @@
     <a href="/articles/about">About</a>
     <a href="/articles/story">Our story</a>
     <a href="/gallery">Gallery</a>
-    <a href="https://www.codiha.com/contact">Contact</a>
+    <a href="/contact">Contact</a>
   </div>
 
   <p>
@@ -242,7 +242,10 @@
   </p>
 
   <span class="subfoo">
-    Site made by the <a href="https://agency.codiha.com/">CODIHA</a>&trade;
+    Site made by the
+    <a href="https://www.linkedin.com/company/codiha" rel="noopener noreferrer" target="_blank"
+      >CODIHA</a
+    >&trade;
     Agency.
   </span>
 </div>

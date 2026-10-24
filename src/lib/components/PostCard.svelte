@@ -8,10 +8,9 @@
 	import Fa from 'svelte-fa';
 	import { faComment, faTrash } from '@fortawesome/free-solid-svg-icons';
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { relative } from '$lib/utils.js';
-	import { REACTIONS, totalReactions } from '$lib/reactions.js';
+	import { REACTIONS, glyphFor, totalReactions } from '$lib/reactions.js';
 
 	export let post;
 	/** Shown only to whoever may remove it. */
@@ -20,8 +19,7 @@
 	export let full = false;
 	/**
 	 * Shown somewhere without a `?/react` action - the landing page. The
-	 * tally becomes a link to the post rather than a picker that would POST
-	 * to a route that cannot handle it.
+	 * counts still show; there is simply no way to add one from there.
 	 */
 	export let readonly = false;
 
@@ -36,6 +34,31 @@
 
 	let picking = false;
 	let reactError = '';
+
+	/* Who reacted, fetched only when somebody asks for it. A page of posts
+	   would otherwise carry every reactor of every post on the off-chance
+	   that one of them gets opened. */
+	let reactors = null;
+	let loadingReactors = false;
+	let reactorError = '';
+
+	const toggleReactors = async () => {
+		if (reactors) {
+			reactors = null;
+			return;
+		}
+		loadingReactors = true;
+		reactorError = '';
+		try {
+			const res = await fetch('/posts/' + post.id + '/reactions');
+			if (!res.ok) throw new Error(String(res.status));
+			reactors = (await res.json()).reactors ?? [];
+		} catch {
+			reactorError = 'Could not load who reacted.';
+		} finally {
+			loadingReactors = false;
+		}
+	};
 
 	const react = (key) => {
 		if (mine === key) {
@@ -105,24 +128,36 @@
 
 	<footer>
 		<div class="reactions">
-			<!-- The tally doubles as the opener, so the bar stays one control
-			     until somebody actually wants to react. -->
-			<button
-				class="act"
-				class:on={!!mine}
-				type="button"
-				on:click={() => (readonly ? goto(`/posts/${post.id}`) : (picking = !picking))}
-				title={readonly ? 'Open this post' : 'React to this post'}
-			>
-				{#if total}
+			<!-- The counts are the point, so they are always on the card. The
+			     button that adds one is separate, and clicking the counts asks
+			     who is behind them. -->
+			{#if total}
+				<button
+					class="act tally"
+					type="button"
+					on:click={toggleReactors}
+					title="See who reacted"
+					aria-expanded={!!reactors}
+				>
 					<span class="glyphs">
 						{#each (post.reactions ?? []).slice(0, 3) as r}<span>{r.glyph}</span>{/each}
 					</span>
 					{total}
-				{:else}
-					<span class="glyphs"><span>🙂</span></span> React
-				{/if}
-			</button>
+				</button>
+			{/if}
+
+			{#if !readonly}
+				<button
+					class="act"
+					class:on={!!mine}
+					type="button"
+					on:click={() => (picking = !picking)}
+					title="React to this post"
+				>
+					<span class="glyphs"><span>{mine ? glyphFor(mine) : '🙂'}</span></span>
+					{mine ? 'Reacted' : 'React'}
+				</button>
+			{/if}
 
 			{#if picking}
 				<div class="picker">
@@ -146,6 +181,25 @@
 			{/if}
 
 			{#if reactError}<span class="tiny bad-text">{reactError}</span>{/if}
+
+			{#if loadingReactors}
+				<p class="tiny muted who">Loading…</p>
+			{:else if reactorError}
+				<p class="tiny bad-text who">{reactorError}</p>
+			{:else if reactors}
+				{#if reactors.length}
+					<ul class="who">
+						{#each reactors as r (r.member_id)}
+							<li>
+								<span class="g">{glyphFor(r.emoji)}</span>
+								<a href="/members/{r.member_id}">{r.full_name}</a>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="tiny muted who">Nobody yet.</p>
+				{/if}
+			{/if}
 		</div>
 
 		<a class="act" href="/posts/{post.id}">
@@ -249,7 +303,44 @@
 	}
 
 	.reactions {
-		position: relative;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	/* The counts read as a label you can press, not as another button
+	   competing with the one that actually adds a reaction. */
+	.tally {
+		border-style: dashed;
+	}
+
+	.who {
+		flex-basis: 100%;
+		list-style: none;
+		margin: 0.35rem 0 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.15rem 0.7rem;
+		font-family: Inter, sans-serif;
+		font-size: 0.82rem;
+	}
+
+	.who li {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+
+	.who a {
+		color: var(--muted);
+		text-decoration: none;
+	}
+
+	.who a:hover {
+		color: var(--accent);
+		text-decoration: underline;
 	}
 
 	.glyphs {

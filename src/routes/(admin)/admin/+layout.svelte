@@ -9,6 +9,7 @@
     faLaptopCode,
     faCheckToSlot,
     faEnvelope,
+  faEnvelopeOpenText,
     faPalette,
     faArrowLeft,
   } from "@fortawesome/free-solid-svg-icons";
@@ -57,6 +58,13 @@
       min: "project_manager",
     },
     { name: "Gallery", icon: faImages, href: "/admin/gallery", min: "staff" },
+    {
+      name: "Messages",
+      icon: faEnvelopeOpenText,
+      href: "/admin/contact",
+      badge: data.newMessages,
+      min: "staff",
+    },
     {
       name: "Votes",
       icon: faCheckToSlot,
