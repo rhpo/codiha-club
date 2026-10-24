@@ -1,6 +1,8 @@
 import { fail, redirect } from "@sveltejs/kit";
 import { missingProfileFields, profileComplete } from "$lib/profile.js";
 import { needsFacePhoto } from "$lib/roles.js";
+import { loadApplicationWindow } from "$lib/server/settings";
+import { windowState } from "$lib/applications.js";
 import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -36,6 +38,24 @@ export const actions: Actions = {
     if (!user) throw redirect(303, "/login");
 
     const profileBefore = await locals.getProfile();
+
+    // The intake window applies to NEW applications only. Somebody already in
+    // the club keeps being able to correct their own details after it shuts.
+    if (!profileBefore?.onboarded_at) {
+      const win = windowState(
+        await loadApplicationWindow(locals.supabase),
+        Date.now()
+      );
+      if (!win.accepting) {
+        return fail(403, {
+          error:
+            win.state === "before"
+              ? "Applications have not opened yet. Please come back when the countdown ends."
+              : "Applications are closed. The club is not taking new members right now.",
+        });
+      }
+    }
+
     const form = await request.formData();
     const str = (k: string) => String(form.get(k) ?? "").trim();
 

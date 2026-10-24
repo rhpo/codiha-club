@@ -20,6 +20,11 @@ import {
 import { secretMatches } from "../src/lib/server/webhook-auth.js";
 import { missingProfileFields, profileComplete } from "../src/lib/profile.js";
 import {
+  humanDuration,
+  resolveWindow,
+  windowState,
+} from "../src/lib/applications.js";
+import {
   assignableRoles,
   atLeast,
   can,
@@ -722,5 +727,88 @@ assert.equal(
   "the Developer rank is exempt"
 );
 assert.equal(needsFacePhoto(null), false, "no profile, nothing to ask for");
+
+// --- application intake window ---------------------------------------------
+
+const T0b = Date.parse("2026-03-10T12:00:00Z");
+const day = 86400000;
+
+// Nothing configured is how the club started: always accepting.
+assert.deepEqual(
+  windowState({ opens_at: null, closes_at: null }, T0b).state,
+  "always",
+  "no dates set means intake is open"
+);
+assert.equal(
+  windowState({ opens_at: null, closes_at: null }, T0b).accepting,
+  true,
+  "no dates set accepts applications"
+);
+
+// Before the start, after the end, and the window in between.
+const soon = new Date(T0b + 2 * day).toISOString();
+const past = new Date(T0b - 2 * day).toISOString();
+assert.equal(
+  windowState({ opens_at: soon, closes_at: null }, T0b).state,
+  "before",
+  "a start in the future has not opened yet"
+);
+assert.equal(
+  windowState({ opens_at: soon, closes_at: null }, T0b).accepting,
+  false,
+  "an unopened window refuses applications"
+);
+assert.equal(
+  windowState({ opens_at: past, closes_at: soon }, T0b).state,
+  "open",
+  "between the two dates it is open"
+);
+assert.equal(
+  windowState({ opens_at: past, closes_at: soon }, T0b).msUntilClose,
+  2 * day,
+  "the countdown measures to the closing date"
+);
+assert.equal(
+  windowState({ opens_at: past, closes_at: past }, T0b).state,
+  "after",
+  "past the closing date it is shut"
+);
+
+// A closing date on its own still shuts intake: the board may never have
+// set a start, and an end with no start must not read as "always open".
+assert.equal(
+  windowState({ opens_at: null, closes_at: past }, T0b).accepting,
+  false,
+  "an elapsed end closes intake even with no start"
+);
+
+// The boundary belongs to the closed side, so a deadline is a deadline.
+const exact = new Date(T0b).toISOString();
+assert.equal(
+  windowState({ opens_at: null, closes_at: exact }, T0b).accepting,
+  false,
+  "the closing instant itself is closed"
+);
+assert.equal(
+  windowState({ opens_at: exact, closes_at: null }, T0b).accepting,
+  true,
+  "the opening instant itself is open"
+);
+
+// Anything unparseable is dropped rather than locking people out.
+assert.deepEqual(
+  resolveWindow({ opens_at: "not a date", closes_at: "" }),
+  { opens_at: null, closes_at: null },
+  "junk dates fall back to always open"
+);
+assert.deepEqual(
+  resolveWindow(null),
+  { opens_at: null, closes_at: null },
+  "a missing settings row falls back to always open"
+);
+
+assert.equal(humanDuration(2 * day + 4 * 3600000), "2 days and 4 hours");
+assert.equal(humanDuration(45 * 60000), "45 minutes");
+assert.equal(humanDuration(-5), "moments", "a past deadline reads as moments");
 
 console.log("selfcheck: all assertions passed");
