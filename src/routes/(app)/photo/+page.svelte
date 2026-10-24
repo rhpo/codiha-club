@@ -238,22 +238,24 @@
       <div class="notice bad">{message}</div>
     {/if}
 
+    <!-- Only a photo that passed the check can be submitted. There is no
+         "save anyway" any more: nobody can approve one by hand, so an
+         unchecked photo would simply never become valid. -->
     <button
       class="btn lg block"
       type="submit"
-      disabled={checking ||
-        faceOk === null ||
-        (faceOk === false && !unavailable)}
+      disabled={checking || faceOk !== true}
     >
       <Fa icon={faCamera} />
-      {#if faceOk === false && unavailable}
-        Save for review
-      {:else if data.finishingSignup}
-        Finish and submit
-      {:else}
-        Save photo
-      {/if}
+      {data.finishingSignup ? "Finish and submit" : "Save photo"}
     </button>
+
+    {#if unavailable}
+      <p class="tiny muted foot">
+        The face check could not load. Check your connection and try again, or
+        open this page in a different browser.
+      </p>
+    {/if}
 
     {#if data.photoBackHref}
       <a class="btn ghost block" href={data.photoBackHref}>

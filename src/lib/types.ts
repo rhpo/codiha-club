@@ -5,7 +5,7 @@ export type Role =
   | "project_manager"
   | "admin"
   | "superadmin";
-export type MemberStatus = "pending" | "approved" | "rejected";
+export type MemberStatus = "pending" | "approved" | "rejected" | "alumni";
 
 export interface Profile {
   id: string;

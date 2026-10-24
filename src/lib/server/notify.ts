@@ -116,6 +116,29 @@ export function notifyRejected(
   );
 }
 
+/**
+ * Membership ended.
+ *
+ * Worth sending because the alternative is somebody discovering it by being
+ * locked out of their own dashboard with no explanation.
+ */
+export function notifyAlumni(targets: NotifyTarget[], ctx: Ctx) {
+  return blast(
+    targets,
+    "Your CODIHA Club membership has ended",
+    (t) =>
+      `<p>Hi ${firstName(t.full_name)},</p>
+			 <p>Your active membership of CODIHA Club has ended, and you are now listed as an
+			 <strong>alumnus</strong> of the club.</p>
+			 <p>Nothing you earned has been deleted. Your certificates stay valid, and the links you
+			 have already shared keep working.</p>
+			 <p>Thanks for everything you put in. If you would like to come back, the board can
+			 reactivate your membership at any time.</p>
+			 <p>The CODIHA Club board</p>`,
+    ctx
+  );
+}
+
 /** Promoted or moved to a different role. */
 export function notifyRoleChanged(
   targets: NotifyTarget[],

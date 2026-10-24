@@ -40,18 +40,18 @@ export const actions: Actions = {
     const profile = await requireOnboarded(event);
     const form = await event.request.formData();
 
-    // The browser reports what its detector found. It is not trustworthy on
-    // its own, which is why it only ever sets a flag an admin can review,
-    // never grants access to anything.
+    // What the browser's detector found. Not trustworthy on its own - it only
+    // ever sets a flag, and never grants access to anything.
     const detected = String(form.get("face_detected") ?? "") === "1";
-    // Set only when the detector could not run at all. Without this, a
-    // browser that cannot load the model would lock the member out for good.
-    const unavailable = String(form.get("face_unavailable") ?? "") === "1";
 
-    if (!detected && !unavailable) {
+    // Passing the check is the only route to a verified photo: nobody,
+    // including an admin, can mark one acceptable by hand. A photo that did
+    // not pass is refused here rather than stored awaiting a review that can
+    // never happen.
+    if (!detected) {
       return fail(400, {
         error:
-          "That photo does not show a face clearly enough. Please try another one.",
+          "That photo did not pass the face check. Try another one, or use your camera in better light.",
       });
     }
 
@@ -77,13 +77,6 @@ export const actions: Actions = {
       .eq("id", profile.id);
 
     if (error) return fail(500, { error: error.message });
-
-    if (!detected) {
-      return {
-        success:
-          "Photo saved. The automatic face check could not run, so an admin will confirm it.",
-      };
-    }
 
     // A member who had not been reviewed yet has now finished signing up.
     if (profile.status !== "approved") throw redirect(303, "/pending");

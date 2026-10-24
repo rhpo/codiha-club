@@ -6,6 +6,7 @@
     faCheck,
     faXmark,
     faUserShield,
+    faTrash,
   } from "@fortawesome/free-solid-svg-icons";
   import Avatar from "$lib/components/Avatar.svelte";
   import { formatDate } from "$lib/utils.js";
@@ -225,25 +226,16 @@
               <span class="pill {statusTone[m.status]}">{m.status}</span>
             {/if}
             {#if m.status === "approved" && m.role !== "superadmin"}
-              <form method="POST" action="?/verifyPhoto" class="photo-form">
-                <input type="hidden" name="id" value={m.id} />
-                <input
-                  type="hidden"
-                  name="verified"
-                  value={m.avatar_face_verified ? "0" : "1"}
-                />
-                <button
-                  class="pill {m.avatar_face_verified
-                    ? 'ok'
-                    : 'warn'} photo-btn"
-                  type="submit"
-                  title={m.avatar_face_verified
-                    ? "Photo approved. Click to ask for a new one."
-                    : "No verified face photo. Click to approve the current one."}
-                >
-                  {m.avatar_face_verified ? "photo ok" : "no photo"}
-                </button>
-              </form>
+              <!-- Read-only. avatar_face_verified is set by the face check
+                   on /photo and by nothing else, so there is no button. -->
+              <span
+                class="pill {m.avatar_face_verified ? 'ok' : 'warn'}"
+                title={m.avatar_face_verified
+                  ? "Passed the automatic face check."
+                  : "Has not passed the face check yet. Only the member can fix this, by uploading a photo that passes."}
+              >
+                {m.avatar_face_verified ? "photo ok" : "no photo"}
+              </span>
             {/if}
           </td>
           <td class="tiny muted">{formatDate(m.created_at)}</td>
@@ -336,6 +328,67 @@
                   </form>
                 {/if}
 
+                {#if data.canSetWindow && m.id !== data.actorId && canAssignTo(data.actorRole, m.role)}
+                  <div class="danger-zone">
+                    {#if m.status === "approved"}
+                      <form method="POST" action="?/kick" class="inline-form">
+                        <input type="hidden" name="id" value={m.id} />
+                        <div class="dz-copy">
+                          <strong>End membership</strong>
+                          <span class="tiny muted">
+                            Marks them an alumnus. They lose access, but keep
+                            their points, certificates and history.
+                          </span>
+                        </div>
+                        <button class="btn sm ghost" type="submit">
+                          Make alumnus
+                        </button>
+                      </form>
+                    {:else if m.status === "alumni"}
+                      <form
+                        method="POST"
+                        action="?/approve"
+                        class="inline-form"
+                      >
+                        <input type="hidden" name="id" value={m.id} />
+                        <div class="dz-copy">
+                          <strong>Alumnus</strong>
+                          <span class="tiny muted"
+                            >Bring them back as an active member.</span
+                          >
+                        </div>
+                        <button class="btn sm ok" type="submit"
+                          >Reactivate</button
+                        >
+                      </form>
+                    {/if}
+
+                    <form
+                      method="POST"
+                      action="?/deleteMember"
+                      class="inline-form"
+                    >
+                      <input type="hidden" name="id" value={m.id} />
+                      <label class="field">
+                        <span><Fa icon={faTrash} /> Delete permanently</span>
+                        <input
+                          name="confirm_name"
+                          placeholder={`Type "${m.full_name}" to confirm`}
+                          autocomplete="off"
+                          required
+                        />
+                        <span class="hint">
+                          Erases the account and everything attached to it:
+                          points, registrations, applications and certificates.
+                          Cannot be undone.
+                        </span>
+                      </label>
+                      <button class="btn sm danger" type="submit">Delete</button
+                      >
+                    </form>
+                  </div>
+                {/if}
+
                 <div class="meta tiny muted">
                   {#if m.discord}<span>Discord: {m.discord}</span>{/if}
                   {#if m.phone}<span>Phone: {m.phone}</span>{/if}
@@ -363,6 +416,24 @@
 </div>
 
 <style>
+  .danger-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--glass-border);
+    border-left: 3px solid #c0493f;
+    border-radius: 10px;
+  }
+
+  .dz-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1 1 14rem;
+    min-width: 0;
+  }
+
   .window-panel {
     display: flex;
     flex-direction: column;

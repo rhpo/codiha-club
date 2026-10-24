@@ -20,6 +20,7 @@ import {
   notifyApproved,
   notifyRejected,
   notifyRoleChanged,
+  notifyAlumni,
 } from "$lib/server/notify";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -264,31 +265,92 @@ export const actions: Actions = {
    * clearly them", a false negative would lock a member out of the whole
    * member area permanently.
    */
-  verifyPhoto: async (event) => {
-    await requireStaff(event);
+  /**
+   * Ends somebody's membership without erasing them.
+   *
+   * is_member() and the members view both require status = "approved",
+   * so this one update removes their access and takes them out of the
+   * public lists, while their points, certificates and history stay.
+   */
+  kick: async (event) => {
+    const actor = await requireAdmin(event);
     const form = await event.request.formData();
     const id = String(form.get("id") ?? "");
-    const verified = String(form.get("verified") ?? "") === "1";
     if (!id) return fail(400, { error: "Missing member id" });
+    if (id === actor.id) {
+      return fail(400, { error: "You cannot remove yourself." });
+    }
 
-    // The profiles_protect trigger blocks this column for anyone below
-    // admin, so it goes through the service role after the staff check.
-    const { data, error } = await supabaseAdmin()
+    const { data: target } = await event.locals.supabase
       .from("profiles")
-      .update({
-        avatar_face_verified: verified,
-        avatar_verified_at: verified ? new Date().toISOString() : null,
-      })
+      .select("role,full_name")
       .eq("id", id)
-      .select("full_name")
       .maybeSingle();
+    if (!target) return fail(404, { error: "Member not found." });
+    if (!canAssignTo(actor.role, target.role)) {
+      return fail(403, { error: "That member outranks you." });
+    }
 
+    const { data, error } = await event.locals.supabase
+      .from("profiles")
+      .update({ status: "alumni" })
+      .eq("id", id)
+      .select("email,full_name")
+      .maybeSingle();
     if (error) return fail(400, { error: error.message });
+
+    if (data) {
+      await notifyAlumni([data], {
+        origin: event.url.origin,
+        theme: await loadTheme(event.locals.supabase),
+      });
+    }
     return {
-      success: verified
-        ? `${data?.full_name || "Member"}'s photo approved.`
-        : `${data?.full_name || "Member"} will be asked for a new photo.`,
+      success: `${data?.full_name || "Member"} is now an alumnus.`,
     };
+  },
+
+  /**
+   * Erases somebody completely.
+   *
+   * Deleting the auth user is what actually removes them: profiles.id
+   * references auth.users with on delete cascade, and eight other tables
+   * cascade from profiles, so their points, registrations, applications
+   * and certificates go with it. There is no undo, which is why the form
+   * makes the admin type the member's name.
+   */
+  deleteMember: async (event) => {
+    const actor = await requireAdmin(event);
+    const form = await event.request.formData();
+    const id = String(form.get("id") ?? "");
+    const typed = String(form.get("confirm_name") ?? "").trim();
+    if (!id) return fail(400, { error: "Missing member id" });
+    if (id === actor.id) {
+      return fail(400, { error: "You cannot delete yourself." });
+    }
+
+    const { data: target } = await event.locals.supabase
+      .from("profiles")
+      .select("role,full_name")
+      .eq("id", id)
+      .maybeSingle();
+    if (!target) return fail(404, { error: "Member not found." });
+    if (!canAssignTo(actor.role, target.role)) {
+      return fail(403, { error: "That member outranks you." });
+    }
+
+    // Typing the name is the last thing between an admin and an
+    // irreversible delete of somebody's whole history.
+    const expected = (target.full_name || "").trim();
+    if (!expected || typed.toLowerCase() !== expected.toLowerCase()) {
+      return fail(400, {
+        error: `To delete this member, type their full name exactly: ${expected}`,
+      });
+    }
+
+    const { error } = await supabaseAdmin().auth.admin.deleteUser(id);
+    if (error) return fail(400, { error: error.message });
+    return { success: `${expected} was deleted permanently.` };
   },
 
   setRole: async (event) => {
