@@ -270,3 +270,45 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/**
+ * A new event is on the calendar.
+ *
+ * Opt-in: the board ticks a box on the event form, because not every event
+ * deserves a mail to the whole club. One batch, personalised per member.
+ */
+export function notifyNewEvent(
+  targets: NotifyTarget[],
+  ev: {
+    title: string;
+    slug: string;
+    starts_at: string;
+    location?: string | null;
+    summary?: string | null;
+  },
+  ctx: Ctx
+) {
+  const when = new Date(ev.starts_at).toLocaleString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return blast(
+    targets,
+    `New at CODIHA Club: ${ev.title}`,
+    (t) =>
+      `<p>Hi ${firstName(t.full_name)},</p>
+			 <p>We just announced <strong>${escapeHtml(ev.title)}</strong>.</p>
+			 ${ev.summary ? `<p>${escapeHtml(ev.summary)}</p>` : ""}
+			 <p><strong>When:</strong> ${when}${
+         ev.location
+           ? `<br/><strong>Where:</strong> ${escapeHtml(ev.location)}`
+           : ""
+       }</p>
+			 ${button("Save my place", `${ctx.origin}/events/${ev.slug}`, ctx.theme)}
+			 <p>The CODIHA Club board</p>`,
+    ctx
+  );
+}

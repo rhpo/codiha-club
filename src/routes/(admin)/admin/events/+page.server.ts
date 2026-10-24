@@ -2,6 +2,9 @@ import { fail, redirect } from '@sveltejs/kit';
 import { requireContentManager } from '$lib/server/guards';
 import { localToUtcIso, tzOffsetFrom } from '$lib/server/datetime';
 import { uploadCover } from '$lib/server/upload';
+import { supabaseAdmin } from '$lib/server/supabaseAdmin';
+import { notifyNewEvent } from '$lib/server/notify';
+import { loadTheme } from '$lib/server/settings';
 import { slugify } from '$lib/utils.js';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -51,17 +54,22 @@ export const actions: Actions = {
 		}
 
 		const capacity = str('capacity');
+		const slug = str('slug') || slugify(title) || `event-${Date.now()}`;
+		const status = str('status') || 'draft';
+		const summary = str('summary') || null;
+		const location = str('location') || null;
+
 		const { data, error } = await event.locals.supabase
 			.from('events')
 			.insert({
 				title,
-				slug: str('slug') || slugify(title) || `event-${Date.now()}`,
-				summary: str('summary') || null,
+				slug,
+				summary,
 				description: str('description') || null,
-				location: str('location') || null,
+				location,
 				capacity: capacity ? Number(capacity) : null,
 				checkin_points: Number(str('checkin_points') || 10),
-				status: str('status') || 'draft',
+				status,
 				starts_at,
 				ends_at,
 				cover_url,
@@ -74,6 +82,21 @@ export const actions: Actions = {
 			return fail(400, {
 				error: error.code === '23505' ? 'That slug is already taken.' : error.message
 			});
+		}
+
+		// Opt-in announcement. A draft is never announced even if the box is
+		// ticked: there would be nothing for members to open yet.
+		if (form.get('notify') && status === 'published') {
+			const { data: members } = await supabaseAdmin()
+				.from('profiles')
+				.select('email,full_name')
+				.eq('status', 'approved');
+
+			await notifyNewEvent(
+				members ?? [],
+				{ title, slug, starts_at, location, summary },
+				{ origin: event.url.origin, theme: await loadTheme(event.locals.supabase) }
+			);
 		}
 
 		throw redirect(303, `/admin/events/${data!.id}`);

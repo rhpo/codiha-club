@@ -91,6 +91,15 @@
 		</label>
 	{/if}
 
+	{#if !event}
+		<!-- Announcements are opt-in, and only make sense once the event is
+		     published: a draft has no page for a member to open. -->
+		<label class="check">
+			<input type="checkbox" name="notify" value="1" /> Email every member about this event
+			<span class="hint">Only sent if the status above is <em>published</em>.</span>
+		</label>
+	{/if}
+
 	<button class="btn" type="submit">{submitLabel}</button>
 </form>
 
