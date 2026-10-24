@@ -19,7 +19,11 @@ import {
   buildBrevoBody,
 } from "../src/lib/server/mail-core.js";
 import { secretMatches } from "../src/lib/server/webhook-auth.js";
-import { missingProfileFields, profileComplete } from "../src/lib/profile.js";
+import {
+  externalUrl,
+  missingProfileFields,
+  profileComplete,
+} from "../src/lib/profile.js";
 import { groupGallery, isVideo } from "../src/lib/gallery.js";
 import {
   humanDuration,
@@ -948,5 +952,41 @@ assert.equal(
 );
 assert.equal(isVideo({ url: "/clip.mp4" }), true, "an mp4 is a video");
 assert.equal(isVideo({ url: "/shot.jpg" }), false, "a jpg is not");
+
+// A profile link typed without a scheme is a RELATIVE path in an href, so
+// it has to be made absolute or it resolves against the club site.
+assert.equal(
+  externalUrl("linkedin.com/in/ramihadid"),
+  "https://linkedin.com/in/ramihadid",
+  "a bare host gets https"
+);
+assert.equal(
+  externalUrl("  github.com/you  "),
+  "https://github.com/you",
+  "and is trimmed first"
+);
+assert.equal(
+  externalUrl("http://example.com/x"),
+  "http://example.com/x",
+  "plain http is left alone"
+);
+assert.equal(
+  externalUrl("https://example.com/x"),
+  "https://example.com/x",
+  "https is left alone"
+);
+
+// Anything else in an href would run or open on the page of whoever is
+// looking at the profile, so it is dropped rather than linked.
+assert.equal(
+  externalUrl("javascript:alert(1)"),
+  null,
+  "a script URL is not a link"
+);
+assert.equal(externalUrl("data:text/html,x"), null, "nor is a data URL");
+assert.equal(externalUrl(""), null, "empty stays empty");
+assert.equal(externalUrl(null), null, "so does nothing at all");
+assert.equal(externalUrl("   "), null, "and whitespace only");
+assert.equal(externalUrl("not a url"), null, "a sentence is not a host");
 
 console.log("selfcheck: all assertions passed");

@@ -7,11 +7,16 @@
 	import Coin from '$lib/components/Coin.svelte';
 	import PostCard from '$lib/components/PostCard.svelte';
 	import { formatDate } from '$lib/utils.js';
+	import { externalUrl } from '$lib/profile.js';
 
 	export let data;
 
 	$: m = data.member;
 	$: details = [m.university, m.field, m.year].filter(Boolean).join(' · ');
+	// Older rows were saved before the links were normalised, so fix them on
+	// the way out as well as on the way in.
+	$: github = externalUrl(m.github);
+	$: linkedin = externalUrl(m.linkedin);
 </script>
 
 <svelte:head>
@@ -29,13 +34,13 @@
 			<p class="tiny muted">Member since {formatDate(m.created_at)}</p>
 
 			<div class="links">
-				{#if m.github}
-					<a class="btn ghost sm" href={m.github} rel="noopener noreferrer" target="_blank">
+				{#if github}
+					<a class="btn ghost sm" href={github} rel="noopener noreferrer" target="_blank">
 						<Fa icon={faGithub} /> GitHub
 					</a>
 				{/if}
-				{#if m.linkedin}
-					<a class="btn ghost sm" href={m.linkedin} rel="noopener noreferrer" target="_blank">
+				{#if linkedin}
+					<a class="btn ghost sm" href={linkedin} rel="noopener noreferrer" target="_blank">
 						<Fa icon={faLinkedin} /> LinkedIn
 					</a>
 				{/if}

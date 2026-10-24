@@ -55,3 +55,40 @@ export function profileComplete(profile) {
 	if (!profile.onboarded_at) return false;
 	return missingProfileFields(profile).length === 0;
 }
+
+/**
+ * Turns what somebody typed into a link into something safe to follow.
+ *
+ * The fields ask for "github.com/you", so most people leave the scheme off.
+ * A bare "github.com/you" in an href is a RELATIVE path: the browser hangs it
+ * off the current page and you land on club.codiha.com/members/github.com/you,
+ * which is nothing. Assume https for those.
+ *
+ * Anything that is already a URL with a scheme has to be one we are willing
+ * to put behind a link somebody else will click, so only http and https pass.
+ * "javascript:..." in a profile field would otherwise run on the profile page
+ * of whoever viewed it.
+ *
+ * @param {string | null | undefined} raw
+ * @returns {string | null} an absolute http(s) URL, or null if there is none
+ */
+export function externalUrl(raw) {
+	const value = String(raw ?? '').trim();
+	if (!value) return null;
+
+	// A scheme is anything up to the first colon that looks like a scheme;
+	// "github.com/you" has no colon, "localhost:3000/x" is not a scheme.
+	const scheme = value.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase();
+	const candidate = scheme ? value : `https://${value}`;
+	if (scheme && scheme !== 'http' && scheme !== 'https') return null;
+
+	try {
+		const url = new URL(candidate);
+		// A URL needs somewhere to go: "https://" alone parses but is useless,
+		// and so is anything whose host we could not read.
+		if (!url.hostname || !url.hostname.includes('.')) return null;
+		return url.href;
+	} catch {
+		return null;
+	}
+}

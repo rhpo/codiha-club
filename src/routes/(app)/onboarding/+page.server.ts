@@ -1,5 +1,5 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { missingProfileFields, profileComplete } from "$lib/profile.js";
+import { externalUrl, missingProfileFields, profileComplete } from "$lib/profile.js";
 import { needsFacePhoto } from "$lib/roles.js";
 import { loadApplicationWindow } from "$lib/server/settings";
 import { windowState } from "$lib/applications.js";
@@ -77,8 +77,10 @@ export const actions: Actions = {
       year,
       discord: str("discord") || null,
       phone: str("phone") || null,
-      github: str("github") || null,
-      linkedin: str("linkedin") || null,
+      // Stored absolute, so an href built from them is never read as a
+      // path relative to the club site.
+      github: externalUrl(str("github")),
+      linkedin: externalUrl(str("linkedin")),
       bio: str("bio") || null,
     };
 
