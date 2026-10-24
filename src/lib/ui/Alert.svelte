@@ -75,6 +75,9 @@
 		max-width: 480px;
 		width: 100%;
 		background-color: #fff;
+		/* A light card on a dark site: say so once here and every child
+		   inherits it, instead of each one overriding the page's colour. */
+		color: #111827;
 		border-radius: 16px;
 		border-top: 5px solid var(--accent);
 		display: flex;
@@ -110,7 +113,7 @@
 	h3 {
 		font-weight: 700;
 		font-size: 1.1rem;
-		color: #111827 !important;
+		color: #111827;
 		display: flex;
 		align-items: center;
 		gap: 0.55rem;

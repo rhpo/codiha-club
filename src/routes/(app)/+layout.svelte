@@ -557,7 +557,10 @@
     gap: 1rem;
   }
 
-  nav * {
+  /* The nav's colour, inherited. This matched every descendant directly,
+     which outranked `.btn` and painted the white "Join the club" button's
+     label and icon the same cream as the bar behind it. */
+  nav {
     color: var(--color-text);
   }
 

@@ -61,17 +61,21 @@ html {
 
 * {
   font-family: var(--font-body);
-  color: var(--color-text);
   box-sizing: border-box;
 }
 
-/* An icon belongs to the text it sits in.
-   The `*` rule above matches <svg> directly, which beats inheritance, so
-   every icon was painted the page's text colour no matter what it sat on:
-   pale on a white button, wrong inside a coloured alert. Font Awesome fills
-   with currentColor, so handing the colour back to the parent is all that is
-   needed. Icons with their own fills, like the multicolour Google mark, set
-   those on their paths and are unaffected. */
+/* Text colour is inherited from here, never painted onto every element.
+   This rule used to live in the `*` block above, which matches each element
+   directly and so beats anything merely inherited: a white button, a light
+   panel or a coloured alert could ask its children to be dark and lose. Set
+   it once and let it flow down, so anything that sets its own colour wins
+   for its subtree. Form controls do not inherit colour by default, so
+   platform.css gives them one explicitly. */
+body {
+  color: var(--color-text);
+}
+
+/* Font Awesome fills with currentColor, so an icon follows its text. */
 svg {
   color: inherit;
 }

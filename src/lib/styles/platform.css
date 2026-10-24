@@ -295,6 +295,47 @@ label textarea {
   }
 }
 
+/* Form controls do not inherit colour from their parent - the browser gives
+   them their own black-on-white. Every control inside a .field is styled
+   below, so the ones that went unstyled were the loose inputs outside one:
+   on a dark page they showed as a white box, and once the text colour was
+   inherited rather than forced, black text on it. Give them all the same
+   dark field so a stray input looks like the rest of the site. Buttons keep
+   their own look, and the two controls the browser draws itself are tinted
+   rather than restyled. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='reset']),
+select,
+textarea {
+  font-family: Inter, sans-serif;
+  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-2);
+}
+
+/* The native tick and dot, in the club's colour instead of browser blue. */
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'],
+progress {
+  accent-color: var(--accent);
+}
+
+/* A <select>'s drop-down is painted by the OS, not the page: without this the
+   options are dark text on a dark list in a dark theme. */
+select option,
+select optgroup {
+  background: var(--branding-primary-dark);
+  color: var(--color-text);
+}
+
 .field {
   display: flex;
   flex-direction: column;
