@@ -20,3 +20,6 @@ vite.config.js.timestamp-*
 
 # Local wrangler/miniflare dev state (caches, KV, sqlite). Never committed.
 .wrangler/
+
+# Git Bash on Windows drops these temp files into the tree.
+.msys*
