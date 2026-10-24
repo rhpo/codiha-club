@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { requireMember } from '$lib/server/guards';
 import { POST_IMAGE_LIMIT, uploadPostImages } from '$lib/server/upload';
 import { atLeast, needsFacePhoto } from '$lib/roles.js';
+import { REACTION_KEYS, tallyReactions } from '$lib/reactions.js';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Feed page size. Older posts load by bumping ?take=. */
@@ -28,9 +29,19 @@ export const load: PageServerLoad = async (event) => {
 			? sb.from('post_images').select('post_id,url,position').in('post_id', ids).order('position')
 			: Promise.resolve({ data: [] as { post_id: string; url: string; position: number }[] }),
 		ids.length
-			? sb.from('post_likes').select('post_id').eq('member_id', profile.id).in('post_id', ids)
-			: Promise.resolve({ data: [] as { post_id: string }[] })
+			? sb
+					.from('post_reactions')
+					.select('post_id,emoji')
+					.eq('member_id', profile.id)
+					.in('post_id', ids)
+			: Promise.resolve({ data: [] as { post_id: string; emoji: string }[] })
 	]);
+
+	// One grouped query for the whole page rather than a count per post.
+	const { data: tallies } = ids.length
+		? await sb.rpc('post_reaction_counts', { p_posts: ids })
+		: { data: [] };
+	const reactionsBy = tallyReactions(tallies ?? []);
 
 	const imagesBy = new Map<string, string[]>();
 	for (const img of images ?? []) {
@@ -38,13 +49,17 @@ export const load: PageServerLoad = async (event) => {
 		list.push(img.url);
 		imagesBy.set(img.post_id, list);
 	}
-	const liked = new Set((mine ?? []).map((l: { post_id: string }) => l.post_id));
+	// What this member picked, so their own choice can be highlighted.
+	const myReaction = new Map(
+		(mine ?? []).map((r: { post_id: string; emoji: string }) => [r.post_id, r.emoji])
+	);
 
 	return {
 		posts: (posts ?? []).map((p: Record<string, unknown>) => ({
 			...p,
 			images: imagesBy.get(p.id as string) ?? [],
-			likedByMe: liked.has(p.id as string)
+			reactions: reactionsBy.get(p.id as string) ?? [],
+			myReaction: myReaction.get(p.id as string) ?? null
 		})),
 		// Posting needs a verified face photo, so the form explains itself
 		// rather than failing on submit.
@@ -99,35 +114,41 @@ export const actions: Actions = {
 		return { success: 'Posted.' };
 	},
 
-	like: async (event) => {
+	react: async (event) => {
 		const profile = await requireMember(event);
 		const form = await event.request.formData();
 		const postId = String(form.get('post_id') ?? '');
+		const emoji = String(form.get('emoji') ?? '');
 		if (!postId) return fail(400, { error: 'Missing post' });
+		if (!REACTION_KEYS.includes(emoji)) return fail(400, { error: 'Unknown reaction' });
 
-		// A like is a toggle, and the primary key is what makes it one per
-		// member: inserting twice is a conflict, not a second like.
-		const { data: existing } = await event.locals.supabase
-			.from('post_likes')
-			.select('post_id')
+		const sb = event.locals.supabase;
+		const { data: existing } = await sb
+			.from('post_reactions')
+			.select('emoji')
 			.eq('post_id', postId)
 			.eq('member_id', profile.id)
 			.maybeSingle();
 
-		if (existing) {
-			await event.locals.supabase
-				.from('post_likes')
+		// Picking the one you already chose takes it back; picking a
+		// different one changes your mind rather than adding a second.
+		if (existing?.emoji === emoji) {
+			await sb
+				.from('post_reactions')
 				.delete()
 				.eq('post_id', postId)
 				.eq('member_id', profile.id);
-			return { liked: false };
+			return { reaction: null };
 		}
 
-		const { error } = await event.locals.supabase
-			.from('post_likes')
-			.insert({ post_id: postId, member_id: profile.id });
+		const { error } = await sb
+			.from('post_reactions')
+			.upsert(
+				{ post_id: postId, member_id: profile.id, emoji },
+				{ onConflict: 'post_id,member_id' }
+			);
 		if (error) return fail(400, { error: error.message });
-		return { liked: true };
+		return { reaction: emoji };
 	},
 
 	remove: async (event) => {

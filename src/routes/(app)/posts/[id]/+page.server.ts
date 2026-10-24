@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { requireMember } from '$lib/server/guards';
 import { needsFacePhoto } from '$lib/roles.js';
+import { REACTION_KEYS, tallyReactions } from '$lib/reactions.js';
 import { notifyPostComment } from '$lib/server/notify';
 import { loadTheme } from '$lib/server/settings';
 import type { Actions, PageServerLoad } from './$types';
@@ -27,12 +28,14 @@ export const load: PageServerLoad = async (event) => {
 			.eq('post_id', post.id)
 			.order('created_at'),
 		sb
-			.from('post_likes')
-			.select('post_id')
+			.from('post_reactions')
+			.select('emoji')
 			.eq('post_id', post.id)
 			.eq('member_id', profile.id)
 			.maybeSingle()
 	]);
+
+	const { data: tallies } = await sb.rpc('post_reaction_counts', { p_posts: [post.id] });
 
 	// One indent, never two: the database flattens a reply-to-a-reply onto its
 	// top-level ancestor, so grouping by parent_id is the whole tree.
@@ -49,7 +52,8 @@ export const load: PageServerLoad = async (event) => {
 		post: {
 			...post,
 			images: (images ?? []).map((i: { url: string }) => i.url),
-			likedByMe: !!mine
+			reactions: tallyReactions(tallies ?? []).get(post.id) ?? [],
+			myReaction: (mine as { emoji?: string } | null)?.emoji ?? null
 		},
 		comments: roots.map((c: { id: string }) => ({ ...c, replies: repliesBy.get(c.id) ?? [] })),
 		canComment: !needsFacePhoto(profile),
@@ -116,30 +120,38 @@ export const actions: Actions = {
 		return { success: 'Comment deleted.' };
 	},
 
-	like: async (event) => {
+	react: async (event) => {
 		const profile = await requireMember(event);
+		const form = await event.request.formData();
+		const emoji = String(form.get('emoji') ?? '');
+		if (!REACTION_KEYS.includes(emoji)) return fail(400, { error: 'Unknown reaction' });
 		const sb = event.locals.supabase;
 
 		const { data: existing } = await sb
-			.from('post_likes')
-			.select('post_id')
+			.from('post_reactions')
+			.select('emoji')
 			.eq('post_id', event.params.id)
 			.eq('member_id', profile.id)
 			.maybeSingle();
 
-		if (existing) {
+		// Picking the one you already chose takes it back; picking a different
+		// one changes your mind rather than adding a second.
+		if (existing?.emoji === emoji) {
 			await sb
-				.from('post_likes')
+				.from('post_reactions')
 				.delete()
 				.eq('post_id', event.params.id)
 				.eq('member_id', profile.id);
-			return { liked: false };
+			return { reaction: null };
 		}
 
-		const { error: likeError } = await sb
-			.from('post_likes')
-			.insert({ post_id: event.params.id, member_id: profile.id });
-		if (likeError) return fail(400, { error: likeError.message });
-		return { liked: true };
+		const { error: reactError } = await sb
+			.from('post_reactions')
+			.upsert(
+				{ post_id: event.params.id, member_id: profile.id, emoji },
+				{ onConflict: 'post_id,member_id' }
+			);
+		if (reactError) return fail(400, { error: reactError.message });
+		return { reaction: emoji };
 	}
 };

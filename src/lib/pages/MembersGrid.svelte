@@ -26,9 +26,10 @@
 
     <div class="grid-members" data-aos="fade-up">
       {#each members as m (m.id)}
-        <div
+        <a
           class="chip"
           class:board={m.is_board}
+          href="/members/{m.id}"
           use:tippy={{ content: label(m), placement: "top" }}
         >
           {#if m.avatar_url}
@@ -36,7 +37,7 @@
           {:else}
             <span class="fallback">{initials(m.full_name)}</span>
           {/if}
-        </div>
+        </a>
       {/each}
     </div>
   </section>

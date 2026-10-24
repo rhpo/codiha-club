@@ -16,10 +16,12 @@
   import ScoreExplainer from "$lib/pages/ScoreExplainer.svelte";
   import EventCard from "$lib/components/EventCard.svelte";
   import HackathonCard from "$lib/components/HackathonCard.svelte";
+  import PostCard from "$lib/components/PostCard.svelte";
   import Fa from "svelte-fa";
   import {
     faCalendarDays,
     faLaptopCode,
+    faNewspaper,
   } from "@fortawesome/free-solid-svg-icons";
 
   export let data;
@@ -43,16 +45,18 @@
 
     <ScoreExplainer />
 
-    <section class="block" id="events">
-      <div class="section-head" data-aos="fade-right">
-        <div>
-          <span class="eyebrow">What's next</span>
-          <h2><Fa icon={faCalendarDays} /> Upcoming events</h2>
+    <!-- Nothing scheduled is not news: an empty section only makes the page
+         look abandoned, so these two hide themselves entirely. -->
+    {#if data.events.length}
+      <section class="block" id="events">
+        <div class="section-head" data-aos="fade-right">
+          <div>
+            <span class="eyebrow">What's next</span>
+            <h2><Fa icon={faCalendarDays} /> Upcoming events</h2>
+          </div>
+          <a href="/events">All events →</a>
         </div>
-        <a href="/events">All events →</a>
-      </div>
 
-      {#if data.events.length}
         <div class="grid cols-3">
           {#each data.events as event, i (event.id)}
             <div class="cell" data-aos="fade-up" data-aos-delay={i * 120}>
@@ -60,21 +64,19 @@
             </div>
           {/each}
         </div>
-      {:else}
-        <p class="empty" data-aos="fade-up">Nothing scheduled right now.</p>
-      {/if}
-    </section>
+      </section>
+    {/if}
 
-    <section class="block" id="hackathons">
-      <div class="section-head" data-aos="fade-right">
-        <div>
-          <span class="eyebrow">Build something</span>
-          <h2><Fa icon={faLaptopCode} /> Open hackathons</h2>
+    {#if data.hackathons.length}
+      <section class="block" id="hackathons">
+        <div class="section-head" data-aos="fade-right">
+          <div>
+            <span class="eyebrow">Build something</span>
+            <h2><Fa icon={faLaptopCode} /> Open hackathons</h2>
+          </div>
+          <a href="/hackathons">All hackathons →</a>
         </div>
-        <a href="/hackathons">All hackathons →</a>
-      </div>
 
-      {#if data.hackathons.length}
         <div class="grid cols-2">
           {#each data.hackathons as hackathon, i (hackathon.id)}
             <div class="cell" data-aos="fade-up" data-aos-delay={i * 120}>
@@ -82,12 +84,30 @@
             </div>
           {/each}
         </div>
-      {:else}
-        <p class="empty" data-aos="fade-up">
-          No hackathon open for applications right now.
-        </p>
-      {/if}
-    </section>
+      </section>
+    {/if}
+
+    <!-- Members only, by RLS: a signed-out visitor gets an empty list and
+         never sees this section at all. -->
+    {#if data.posts.length}
+      <section class="block" id="feed">
+        <div class="section-head" data-aos="fade-right">
+          <div>
+            <span class="eyebrow">From the club</span>
+            <h2><Fa icon={faNewspaper} /> Latest posts</h2>
+          </div>
+          <a href="/posts">Open the feed →</a>
+        </div>
+
+        <div class="feed">
+          {#each data.posts as post, i (post.id)}
+            <div data-aos="fade-up" data-aos-delay={i * 120}>
+              <PostCard {post} readonly />
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
 
     <WhatTeach />
     <br />
@@ -118,6 +138,16 @@
 
   .block h2 {
     font-size: 1.8rem;
+  }
+
+  /* A single column: a post is a paragraph of text, not a card in a grid. */
+  .feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    max-width: 640px;
+    align-self: center;
   }
 
 
