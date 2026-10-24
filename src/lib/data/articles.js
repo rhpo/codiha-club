@@ -1,11 +1,11 @@
-
 // @type {{ id: string; title?: string; description?: string; content?: string; date?: string; author?: string; tags?: string[]; language?: string; }[]}
 export let articles = [
-    {
-        id: "about",
-        title: "About Codiha Club",
-        description: "Learn more about Codiha Club, our mission, and what we offer.",
-        content: `
+  {
+    id: "about",
+    title: "About Codiha Club",
+    description:
+      "Learn more about Codiha Club, our mission, and what we offer.",
+    content: `
 ## CODIHA CLUB !
 
 The **Codiha-Club** is an inter-university club based at **ESST d'Alger**, where students from all universities come together to **code, design, and have fun**.
@@ -24,15 +24,15 @@ CODIHA is the place where you:
 Here, you go beyond the limits of a typical classroom!
 
 `,
-        date: "2023-10-01",
-    },
+    date: "2023-10-01",
+  },
 
-
-    {
-        id: "story",
-        title: "Our Story",
-        description: "Discover the journey of Codiha Club from its inception to where we are today.",
-        content: `
+  {
+    id: "story",
+    title: "Our Story",
+    description:
+      "Discover the journey of Codiha Club from its inception to where we are today.",
+    content: `
 ## Our Story
 
 The **Codiha-Club** was founded in **2023** by a group of passionate students at **ESST d'Alger** who wanted to create a space for learning and collaboration beyond the traditional classroom setting.
@@ -53,44 +53,6 @@ Today, Codiha-Club is a thriving community where students can learn, create, and
 Our mission is to empower students to become confident developers and designers who can make a positive impact in the tech world.
 
 `,
-        date: "2023-10-01",
-    },
-
-    {
-        id: "gallery",
-        title: "Gallery",
-        description: "Explore photos and highlights from our events and activities.",
-        content: `
-## Gallery
-
-Welcome to the Codiha-Club gallery! Here, you'll find a collection of photos and highlights from our events, workshops, and collaborative projects.
-
-## Club introduction
-
-![Codiha Club Event](/images/hackiha.png)
-<video controls width="600" src="/videos/hackiha-ramy.mp4">
-
-
-## Cybersecurity Workshop
-
-![Codiha Club Event](/images/members-shot-1.jpg)
-![Codiha Club Event](/images/members-shot-2.jpg)
-
-## Workshop Sessions
-
-![Codiha Club Event](/images/post-svelte.png)
-![Codiha Club Event](/images/post-usa-2.png)
-![Codiha Club Event](/images/post-challenge.png)
-![Codiha Club Event](/images/post-cs.png)
-
-
-## Our Members!
-![Codiha Club Event](/images/members.jpg)
-![Codiha Club Event](/images/members-shot-2.jpg)
-![Codiha Club Event](/images/members-2.jpg)
-![Codiha Club Event](/images/members-shot-3.png)
-![Codiha Club Event](/images/members-3.png)
-
-`,
-    }
+    date: "2023-10-01",
+  },
 ];

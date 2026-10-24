@@ -20,6 +20,7 @@ import {
 } from "../src/lib/server/mail-core.js";
 import { secretMatches } from "../src/lib/server/webhook-auth.js";
 import { missingProfileFields, profileComplete } from "../src/lib/profile.js";
+import { groupGallery, isVideo } from "../src/lib/gallery.js";
 import {
   humanDuration,
   resolveWindow,
@@ -898,5 +899,54 @@ assert.deepEqual(
   [{ name: "cert.pdf", content: "Zm9v" }],
   "attachments are kept"
 );
+
+// --- gallery ordering -------------------------------------------------------
+
+const shots = [
+  { id: "c", url: "/c.jpg", section: "Members", position: 5 },
+  { id: "a", url: "/a.jpg", section: "Workshop", position: 1 },
+  { id: "b", url: "/b.jpg", section: "Workshop", position: 0 },
+  { id: "d", url: "/d.jpg", section: "Members", position: 4 },
+];
+const grouped = groupGallery(shots);
+
+// A section sorts by its earliest photo, so moving one photo to the top
+// carries its whole section up with it.
+assert.deepEqual(
+  grouped.map((g) => g.title),
+  ["Workshop", "Members"],
+  "sections order by their lowest position"
+);
+assert.deepEqual(
+  grouped[0].items.map((i) => i.id),
+  ["b", "a"],
+  "photos inside a section keep their own order"
+);
+assert.deepEqual(
+  grouped[1].items.map((i) => i.id),
+  ["d", "c"],
+  "and so does the second section"
+);
+
+// An empty section is the untitled run at the top of the page, not a
+// section literally called "".
+const untitled = groupGallery([
+  { id: "x", url: "/x.jpg", section: "", position: 0 },
+]);
+assert.equal(untitled[0].title, "", "an empty section keeps an empty title");
+assert.equal(untitled.length, 1, "and is still one group");
+
+assert.deepEqual(groupGallery([]), [], "nothing in, nothing out");
+assert.deepEqual(groupGallery(null), [], "a missing list is not a crash");
+
+// Videos need a <video>; the kind column decides, and the extension is the
+// fallback for rows written before the column existed.
+assert.equal(
+  isVideo({ kind: "video", url: "/x" }),
+  true,
+  "the kind column decides"
+);
+assert.equal(isVideo({ url: "/clip.mp4" }), true, "an mp4 is a video");
+assert.equal(isVideo({ url: "/shot.jpg" }), false, "a jpg is not");
 
 console.log("selfcheck: all assertions passed");

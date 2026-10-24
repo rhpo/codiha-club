@@ -55,7 +55,7 @@
     { name: "Feed", icon: faComments, link: "/posts" },
     { name: "Hackathons", icon: faLaptopCode, link: "/hackathons" },
     { name: "Leaderboard", icon: faRankingStar, link: "/leaderboard" },
-    { name: "Gallery", icon: faImages, link: "/articles/gallery" },
+    { name: "Gallery", icon: faImages, link: "/gallery" },
     { name: "About us", icon: faInfoCircle, link: "/articles/about" },
   ];
 
@@ -233,7 +233,7 @@
     <a href="/leaderboard">Leaderboard</a>
     <a href="/articles/about">About</a>
     <a href="/articles/story">Our story</a>
-    <a href="/articles/gallery">Gallery</a>
+    <a href="/gallery">Gallery</a>
     <a href="https://www.codiha.com/contact">Contact</a>
   </div>
 

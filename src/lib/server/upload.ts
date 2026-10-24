@@ -151,6 +151,68 @@ export async function uploadPostImages(
   return urls;
 }
 
+const GALLERY_VIDEO = ["video/mp4", "video/webm", "video/quicktime"];
+/** Per file. Videos get more room than photos because they need it. */
+const GALLERY_IMAGE_MAX = 10 * 1024 * 1024;
+const GALLERY_VIDEO_MAX = 50 * 1024 * 1024;
+
+/**
+ * Uploads gallery photos and clips.
+ *
+ * Returns the kind alongside the URL so the page knows whether to render an
+ * <img> or a <video> without having to guess from the extension later.
+ */
+export async function uploadGalleryFiles(
+  files: unknown[]
+): Promise<{ url: string; kind: "image" | "video" }[]> {
+  const picked = files.filter(
+    (f): f is File => f instanceof File && f.size > 0
+  );
+  if (!picked.length) return [];
+
+  const admin = supabaseAdmin();
+  const out: { url: string; kind: "image" | "video" }[] = [];
+
+  for (const file of picked) {
+    const isVideo = GALLERY_VIDEO.includes(file.type);
+    if (!isVideo && !ALLOWED.includes(file.type)) {
+      throw new Error(`${file.name} is not an image or a video we can show.`);
+    }
+    const cap = isVideo ? GALLERY_VIDEO_MAX : GALLERY_IMAGE_MAX;
+    if (file.size > cap) {
+      throw new Error(
+        `${file.name} is too large (max ${cap / 1024 / 1024} MB for ${
+          isVideo ? "video" : "images"
+        }).`
+      );
+    }
+
+    const ext = (file.name.split(".").pop() || "jpg")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    // Date-prefixed so the bucket stays browsable, and random so two
+    // uploads of "IMG_1234.jpg" do not collide.
+    const path = `${new Date()
+      .toISOString()
+      .slice(0, 10)}/${crypto.randomUUID()}.${ext}`;
+
+    const { error } = await admin.storage
+      .from("gallery")
+      .upload(path, await file.arrayBuffer(), {
+        contentType: file.type,
+        upsert: false,
+      });
+    if (error) throw new Error(`Upload failed: ${error.message}`);
+
+    out.push({
+      url: admin.storage.from("gallery").getPublicUrl(path).data.publicUrl,
+      kind: isVideo ? "video" : "image",
+    });
+  }
+
+  return out;
+}
+
 /** base64-encode an admin mail attachment for the Brevo payload. */
 export async function fileToAttachment(file: unknown) {
   if (!(file instanceof File) || file.size === 0) return null;
