@@ -65,6 +65,17 @@ html {
   box-sizing: border-box;
 }
 
+/* An icon belongs to the text it sits in.
+   The `*` rule above matches <svg> directly, which beats inheritance, so
+   every icon was painted the page's text colour no matter what it sat on:
+   pale on a white button, wrong inside a coloured alert. Font Awesome fills
+   with currentColor, so handing the colour back to the parent is all that is
+   needed. Icons with their own fills, like the multicolour Google mark, set
+   those on their paths and are unaffected. */
+svg {
+  color: inherit;
+}
+
 /* Headings, plus anything nested in one (an icon's <span>, a highlighted word),
    because the `*` rule above would otherwise reset the children back to Inter. */
 h1,
